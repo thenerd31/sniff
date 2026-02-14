@@ -1,0 +1,61 @@
+/* results.css — Design tokens for the bottom-half results UI
+   Matches Davyn's design system exactly */
+
+:root {
+  --brand: #FF6B00;
+  --brand-light: #FFF4EC;
+  --background: #FFFFFF;
+  --surface: #F9FAFB;
+  --surface-2: #F3F4F6;
+  --foreground: #1A1A1A;
+  --text-muted: #4B5563;
+  --text-subtle: #6B7280;
+  --border: #E5E7EB;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 107, 0, 0.15),
+      0 0 40px rgba(255, 107, 0, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(255, 107, 0, 0.3),
+      0 0 60px rgba(255, 107, 0, 0.15);
+  }
+}
+
+@keyframes singularity-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 60px 20px rgba(26, 26, 26, 0.4),
+      0 0 120px 40px rgba(255, 107, 0, 0.15);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow:
+      0 0 80px 30px rgba(26, 26, 26, 0.6),
+      0 0 160px 60px rgba(255, 107, 0, 0.25);
+  }
+}
+
+/* Scrollbar styling for horizontal list */
+.results-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.results-scroll::-webkit-scrollbar-track {
+  background: var(--surface);
+  border-radius: 3px;
+}
+
+.results-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.results-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-subtle);
+}
