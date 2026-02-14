@@ -36,7 +36,6 @@ const SPARK_COLORS = [
 
 function generateParticles(): ParticleData[] {
   return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    // Fan upward and rightward from the right hole
     const angle = rand(-Math.PI * 0.9, -Math.PI * 0.05);
     const distance = rand(50, 170);
     const midDistance = distance * rand(0.35, 0.55);
@@ -45,7 +44,7 @@ function generateParticles(): ParticleData[] {
       midX: Math.cos(angle) * midDistance + rand(-5, 5),
       midY: Math.sin(angle) * midDistance,
       endX: Math.cos(angle) * distance + rand(-12, 12),
-      endY: Math.sin(angle) * distance + rand(35, 80), // gravity
+      endY: Math.sin(angle) * distance + rand(35, 80),
       size: rand(1.5, 5.5),
       color: SPARK_COLORS[i % SPARK_COLORS.length],
       duration: rand(0.8, 1.5),
@@ -56,39 +55,42 @@ function generateParticles(): ParticleData[] {
 
 /* ═══════════════════════════════════════════════════
    SVG GEOMETRY — Asymmetric padlock
-   ═══════════════════════════════════════════════════
 
-   The LEFT leg is LONG  — extends 28px into the body.
-   The RIGHT leg is SHORT — extends only 6px into the body.
+   LEFT leg  = LONG  (28px into body) — the hinge pin
+   RIGHT leg = SHORT (6px into body)  — clears on pop
 
-   When the shackle pops UP by 24px:
-     • Left leg bottom:  100 → 76  (still 4px inside body top @ 72)
-     • Right leg bottom:  78 → 54  (18px ABOVE body — visible gap!)
+   Pop = 24px up:
+     Left  100 → 76 (still 4px inside body top @72)
+     Right  78 → 54 (18px above body — visible gap)
 
-   Then the shackle SWINGS open, pivoting around the
-   bottom of the left leg (which stays inserted).
+   Swing = rotateY -160° around the left leg
+           (horizontal swing outward like a real padlock hinge)
    ═══════════════════════════════════════════════════ */
 
-// Lock body
 const BODY_X = 20;
 const BODY_Y = 72;
 const BODY_W = 80;
 const BODY_H = 65;
 const BODY_R = 10;
 
-// Shackle
 const LEFT_X = 38;
 const RIGHT_X = 82;
-const ARCH_APEX = 12; // top of the curve
-const LEFT_LEG_BOTTOM = 100; // deep into body (28px past body top)
-const RIGHT_LEG_BOTTOM = 78; // barely into body (6px past body top)
+const ARCH_APEX = 12;
+const LEFT_LEG_BOTTOM = 100;
+const RIGHT_LEG_BOTTOM = 78;
 
-// Pop distance
-const POP_Y = -24;
+// The shackle starts at CLOSED_Y (pushed into the body).
+// The pop lifts it to POPPED_Y (right leg clears the body).
+const CLOSED_Y = 24;
+const POPPED_Y = 0;
 
-// Pivot: bottom of the left leg (this is the hinge pin)
-const PIVOT_X = LEFT_X;
-const PIVOT_Y = LEFT_LEG_BOTTOM;
+// Pixel positions of the left leg in the shackle's rendered HTML div.
+// Shackle SVG viewBox="-5 -10 130 120" rendered at 150×130px.
+//   scaleX = 150/130 ≈ 1.1538   scaleY = 130/120 ≈ 1.0833
+//   LEFT_X (38) → (38-(-5)) × 1.1538 ≈ 50px
+//   LEFT_LEG_BOTTOM (100) → (100-(-10)) × 1.0833 ≈ 119px
+const PIVOT_PX_X = 50;
+const PIVOT_PX_Y = 119;
 
 /* ═══════════════════════════════════════════════
    COMPONENT
@@ -97,10 +99,8 @@ export default function UnlockAnimation({
   unlock,
   onComplete,
 }: UnlockAnimationProps) {
-  // Two separate controllers for the two nested transform groups
-  const popControls = useAnimation();   // outer <g> — translateY
-  const swingControls = useAnimation(); // inner <g> — rotate
-
+  const popControls = useAnimation();
+  const swingControls = useAnimation();
   const shadowControls = useAnimation();
   const glowControls = useAnimation();
 
@@ -115,44 +115,40 @@ export default function UnlockAnimation({
     if (!unlock || phase !== "locked") return;
 
     async function runSequence() {
-      /* ─────── Phase 1: Tension / Jitter (≈500ms) ─────── */
+      /* ─────── Phase 1: Tension / Jitter ─────── */
       setPhase("tension");
 
-      // Rapid micro-shakes via tiny Y translations — simulates
-      // the lock being strained / picked
       for (let i = 0; i < 8; i++) {
         const dx = (i % 2 === 0 ? 1 : -1) * rand(0.5, 1.6);
-        const dy = (i % 2 === 0 ? -1 : 1) * rand(0.3, 1.0);
+        const dy = CLOSED_Y + (i % 2 === 0 ? -1 : 1) * rand(0.3, 1.0);
         await popControls.start({
           x: dx,
           y: dy,
           transition: { duration: 0.055, ease: "easeInOut" },
         });
       }
-      // Settle
+      // Settle back to closed position
       await popControls.start({
         x: 0,
-        y: 0,
+        y: CLOSED_Y,
         transition: { duration: 0.06, ease: "easeOut" },
       });
 
       /* ─────── Phase 2: The Pop ─────── */
       setPhase("pop");
 
-      // Particles burst from right hole at this exact moment
       setShowParticles(true);
 
-      // Glow flash
       glowControls.start({
         opacity: [0, 0.8, 0.35],
         scale: [1, 1.35, 1.15],
         transition: { duration: 0.5, ease: "easeOut" },
       });
 
-      // Spring-based pop upward — the entire shackle translates up.
-      // Left leg stays partially inside, right leg clears completely.
+      // Spring pop — lifts shackle from CLOSED_Y to POPPED_Y.
+      // Right leg clears body, left leg stays partially inside.
       await popControls.start({
-        y: POP_Y,
+        y: POPPED_Y,
         x: 0,
         transition: {
           type: "spring",
@@ -162,46 +158,45 @@ export default function UnlockAnimation({
         },
       });
 
-      // Brief pause — let the eye register the gap
       await new Promise((r) => setTimeout(r, 250));
 
-      /* ─────── Phase 3: The Swing ─────── */
+      /* ─────── Phase 3: The Swing (Y-axis — horizontal) ─────── */
       setPhase("swing");
 
-      // Shadow shifts rightward as the shackle swings
       shadowControls.start({
-        x: 18,
-        opacity: 0.15,
-        transition: { duration: 1, ease: "easeInOut" },
+        x: -12,
+        scaleX: 0.7,
+        opacity: 0.1,
+        transition: { duration: 1.1, ease: "easeInOut" },
       });
 
-      // Glow intensifies
       glowControls.start({
         opacity: 0.7,
         scale: 1.35,
         transition: { duration: 0.9, ease: "easeOut" },
       });
 
-      // Heavy, weighted 180° rotation around the left-leg hinge
+      // Horizontal swing around the left leg — backOut easing
+      // overshoots past -160° then rebounds to resting position
       await swingControls.start({
-        rotate: -180,
+        rotateY: -180,
+        translateZ: -1,
         transition: {
-          duration: 1.1,
-          ease: [0.42, 0, 0.3, 1], // slow heavy start, smooth release
+          duration: 1.2,
+          ease: [0.175, 0.885, 0.32, 1.275], // backOut
         },
       });
 
-      // Tiny overshoot bounce
+      // Mechanical rebound settle
       await swingControls.start({
-        rotate: -173,
-        transition: { duration: 0.18, ease: "easeOut" },
+        rotateY: -152,
+        transition: { duration: 0.2, ease: "easeOut" },
       });
       await swingControls.start({
-        rotate: -177,
-        transition: { duration: 0.14, ease: "easeInOut" },
+        rotateY: -156,
+        transition: { duration: 0.16, ease: "easeInOut" },
       });
 
-      // Glow settles
       glowControls.start({
         opacity: 0.2,
         scale: 1.05,
@@ -220,7 +215,7 @@ export default function UnlockAnimation({
   return (
     <div
       className="relative flex items-center justify-center"
-      style={{ minWidth: 320, minHeight: 340 }}
+      style={{ minWidth: 320, minHeight: 340, perspective: 800 }}
     >
       {/* ── Ambient glow ── */}
       <motion.div
@@ -236,213 +231,210 @@ export default function UnlockAnimation({
         }}
       />
 
-      <svg
-        width="150"
-        height="210"
-        viewBox="-5 -50 130 220"
-        fill="none"
-        style={{ overflow: "visible" }}
+      {/* ═══════════════════════════════════════════
+          Layout: shackle (HTML div) above lock body (SVG).
+          HTML motion.div enables rotateY with perspective.
+          ═══════════════════════════════════════════ */}
+      <div
+        className="relative"
+        style={{ width: 150, height: 210, transformStyle: "preserve-3d" }}
       >
-        <defs>
-          {/* Metallic body gradient — 5-stop vertical */}
-          <linearGradient id="lockBodyGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#4a4a5a" />
-            <stop offset="25%" stopColor="#3a3a48" />
-            <stop offset="50%" stopColor="#2e2e3c" />
-            <stop offset="75%" stopColor="#252534" />
-            <stop offset="100%" stopColor="#1c1c2a" />
-          </linearGradient>
-          {/* Body horizontal highlight */}
-          <linearGradient id="lockBodyHL" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
-            <stop offset="50%" stopColor="rgba(255,255,255,0)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0.04)" />
-          </linearGradient>
-          {/* Shackle metallic gradient */}
-          <linearGradient id="shackleGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#c8c8c8" />
-            <stop offset="25%" stopColor="#b0b0b0" />
-            <stop offset="50%" stopColor="#969696" />
-            <stop offset="75%" stopColor="#808080" />
-            <stop offset="100%" stopColor="#707070" />
-          </linearGradient>
-          {/* Shackle specular highlight */}
-          <linearGradient id="shackleHL" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
-            <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-          </linearGradient>
-          {/* Keyhole */}
-          <radialGradient id="keyholeGrad" cx="50%" cy="40%" r="50%">
-            <stop offset="0%" stopColor="#1a1a2e" />
-            <stop offset="100%" stopColor="#0d0d1a" />
-          </radialGradient>
-        </defs>
 
-        {/* ── Drop shadow (shifts during swing) ── */}
-        <motion.ellipse
-          cx={60}
-          cy={145}
-          rx={38}
-          ry={6}
-          fill="rgba(0,0,0,0.25)"
-          initial={{ x: 0, opacity: 0.2 }}
-          animate={shadowControls}
-        />
-
-        {/* ════════════════════════════════════════
-            SHACKLE — two nested groups:
-              Outer = popControls  (translateY)
-              Inner = swingControls (rotate around left-leg hinge)
-            ════════════════════════════════════════ */}
-        <motion.g
+        {/* ── SHACKLE (HTML layer for 3D transforms) ── */}
+        <motion.div
           animate={popControls}
-          initial={{ x: 0, y: 0 }}
+          initial={{ x: 0, y: CLOSED_Y }}
+          className="absolute"
+          style={{
+            top: 0,
+            left: 0,
+            width: 150,
+            height: 130,
+            zIndex: -1,
+            transformStyle: "preserve-3d",
+          }}
         >
-          <motion.g
+          <motion.div
             animate={swingControls}
-            initial={{ rotate: 0 }}
-            style={{ transformOrigin: `${PIVOT_X}px ${PIVOT_Y}px` }}
+            initial={{ rotateY: 0 }}
+            style={{
+              // Pivot on the LEFT LEG — the vertical hinge axis
+              transformOrigin: `${PIVOT_PX_X}px ${PIVOT_PX_Y}px`,
+              transformStyle: "preserve-3d",
+              width: "100%",
+              height: "100%",
+            }}
           >
-            {/* Main shackle path — ASYMMETRIC legs */}
-            <path
-              d={`
-                M ${LEFT_X} ${LEFT_LEG_BOTTOM}
-                L ${LEFT_X} ${ARCH_APEX + 26}
-                C ${LEFT_X} ${ARCH_APEX + 4},
-                  ${LEFT_X + 9} ${ARCH_APEX},
-                  ${60} ${ARCH_APEX}
-                C ${RIGHT_X - 9} ${ARCH_APEX},
-                  ${RIGHT_X} ${ARCH_APEX + 4},
-                  ${RIGHT_X} ${ARCH_APEX + 26}
-                L ${RIGHT_X} ${RIGHT_LEG_BOTTOM}
-              `}
-              stroke="url(#shackleGrad)"
-              strokeWidth="9"
-              strokeLinecap="round"
+            <svg
+              width="150"
+              height="130"
+              viewBox="-5 -10 130 120"
               fill="none"
-            />
-            {/* Specular highlight along left side and top */}
-            <path
-              d={`
-                M ${LEFT_X + 1} ${LEFT_LEG_BOTTOM - 6}
-                L ${LEFT_X + 1} ${ARCH_APEX + 28}
-                C ${LEFT_X + 1} ${ARCH_APEX + 8},
-                  ${LEFT_X + 9} ${ARCH_APEX + 4},
-                  ${56} ${ARCH_APEX + 4}
-              `}
-              stroke="url(#shackleHL)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-            />
-            {/* Right leg flat bottom cap */}
-            <line
-              x1={RIGHT_X - 4}
-              y1={RIGHT_LEG_BOTTOM}
-              x2={RIGHT_X + 4}
-              y2={RIGHT_LEG_BOTTOM}
-              stroke="#808080"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </motion.g>
-        </motion.g>
+              style={{ overflow: "visible" }}
+            >
+              <defs>
+                <linearGradient id="shackleGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#c8c8c8" />
+                  <stop offset="25%" stopColor="#b0b0b0" />
+                  <stop offset="50%" stopColor="#969696" />
+                  <stop offset="75%" stopColor="#808080" />
+                  <stop offset="100%" stopColor="#707070" />
+                </linearGradient>
+                <linearGradient id="shackleHL" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+              </defs>
 
-        {/* ══════════ LOCK BODY (drawn AFTER shackle so it overlaps the legs) ══════════ */}
-        <rect
-          x={BODY_X}
-          y={BODY_Y}
-          width={BODY_W}
-          height={BODY_H}
-          rx={BODY_R}
-          fill="url(#lockBodyGrad)"
-        />
-        {/* Highlight overlay */}
-        <rect
-          x={BODY_X}
-          y={BODY_Y}
-          width={BODY_W}
-          height={BODY_H}
-          rx={BODY_R}
-          fill="url(#lockBodyHL)"
-        />
-        {/* Top bevel */}
-        <line
-          x1={BODY_X + BODY_R}
-          y1={BODY_Y + 0.5}
-          x2={BODY_X + BODY_W - BODY_R}
-          y2={BODY_Y + 0.5}
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth="1"
-        />
-        {/* Bottom edge */}
-        <line
-          x1={BODY_X + BODY_R}
-          y1={BODY_Y + BODY_H - 0.5}
-          x2={BODY_X + BODY_W - BODY_R}
-          y2={BODY_Y + BODY_H - 0.5}
-          stroke="rgba(0,0,0,0.3)"
-          strokeWidth="1"
-        />
+              {/* Asymmetric shackle path */}
+              <path
+                d={`
+                  M ${LEFT_X} ${LEFT_LEG_BOTTOM}
+                  L ${LEFT_X} ${ARCH_APEX + 26}
+                  C ${LEFT_X} ${ARCH_APEX + 4},
+                    ${LEFT_X + 9} ${ARCH_APEX},
+                    ${60} ${ARCH_APEX}
+                  C ${RIGHT_X - 9} ${ARCH_APEX},
+                    ${RIGHT_X} ${ARCH_APEX + 4},
+                    ${RIGHT_X} ${ARCH_APEX + 26}
+                  L ${RIGHT_X} ${RIGHT_LEG_BOTTOM}
+                `}
+                stroke="url(#shackleGrad)"
+                strokeWidth="9"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* Specular highlight */}
+              <path
+                d={`
+                  M ${LEFT_X + 1} ${LEFT_LEG_BOTTOM - 6}
+                  L ${LEFT_X + 1} ${ARCH_APEX + 28}
+                  C ${LEFT_X + 1} ${ARCH_APEX + 8},
+                    ${LEFT_X + 9} ${ARCH_APEX + 4},
+                    ${56} ${ARCH_APEX + 4}
+                `}
+                stroke="url(#shackleHL)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* Right leg bottom cap */}
+              <line
+                x1={RIGHT_X - 4}
+                y1={RIGHT_LEG_BOTTOM}
+                x2={RIGHT_X + 4}
+                y2={RIGHT_LEG_BOTTOM}
+                stroke="#808080"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </motion.div>
+        </motion.div>
 
-        {/* ── Shackle holes ── */}
-        <ellipse cx={LEFT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
-          fill="rgba(0,0,0,0.5)" />
-        <ellipse cx={RIGHT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
-          fill="rgba(0,0,0,0.5)" />
-        {/* Hole rims */}
-        <ellipse cx={LEFT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
-          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
-        <ellipse cx={RIGHT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
-          fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
+        {/* ── LOCK BODY (static SVG, overlaps shackle legs) ── */}
+        <svg
+          className="absolute"
+          width="150"
+          height="210"
+          viewBox="-5 -50 130 220"
+          fill="none"
+          style={{ overflow: "visible", top: 0, left: 0, zIndex: 2 }}
+        >
+          <defs>
+            <linearGradient id="lockBodyGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#4a4a5a" />
+              <stop offset="25%" stopColor="#3a3a48" />
+              <stop offset="50%" stopColor="#2e2e3c" />
+              <stop offset="75%" stopColor="#252534" />
+              <stop offset="100%" stopColor="#1c1c2a" />
+            </linearGradient>
+            <linearGradient id="lockBodyHL" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.04)" />
+            </linearGradient>
+            <radialGradient id="keyholeGrad" cx="50%" cy="40%" r="50%">
+              <stop offset="0%" stopColor="#1a1a2e" />
+              <stop offset="100%" stopColor="#0d0d1a" />
+            </radialGradient>
+          </defs>
 
-        {/* ── Keyhole ── */}
-        <circle cx={60} cy={99} r={7} fill="url(#keyholeGrad)" />
-        <rect x={57} y={99} width={6} height={14} rx={2.5} fill="url(#keyholeGrad)" />
-        <circle cx={60} cy={99} r={8.5}
-          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" />
-
-        {/* Keyhole breathing glow (only while locked) */}
-        {isLocked && (
-          <motion.circle
+          {/* Drop shadow */}
+          <motion.ellipse
             cx={60}
-            cy={99}
-            r={10}
-            fill="none"
-            stroke="#f5a623"
-            strokeWidth="1"
-            animate={{
-              opacity: [0.0, 0.35, 0.0],
-              r: [10, 13, 10],
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+            cy={145}
+            rx={38}
+            ry={6}
+            fill="rgba(0,0,0,0.25)"
+            initial={{ scaleX: 1, opacity: 0.2 }}
+            animate={shadowControls}
           />
-        )}
 
-        {/* ── Face plate screws ── */}
-        {[
-          [BODY_X + 10, BODY_Y + 10],
-          [BODY_X + BODY_W - 10, BODY_Y + 10],
-          [BODY_X + 10, BODY_Y + BODY_H - 10],
-          [BODY_X + BODY_W - 10, BODY_Y + BODY_H - 10],
-        ].map(([cx, cy], i) => (
-          <g key={i}>
-            <circle cx={cx} cy={cy} r={2.5} fill="rgba(60,60,75,1)" />
-            <line
-              x1={(cx as number) - 1.5}
-              y1={cy}
-              x2={(cx as number) + 1.5}
-              y2={cy}
-              stroke="rgba(0,0,0,0.4)"
-              strokeWidth="0.6"
+          {/* Lock body */}
+          <rect x={BODY_X} y={BODY_Y} width={BODY_W} height={BODY_H}
+            rx={BODY_R} fill="url(#lockBodyGrad)" />
+          <rect x={BODY_X} y={BODY_Y} width={BODY_W} height={BODY_H}
+            rx={BODY_R} fill="url(#lockBodyHL)" />
+          {/* Top bevel */}
+          <line x1={BODY_X + BODY_R} y1={BODY_Y + 0.5}
+            x2={BODY_X + BODY_W - BODY_R} y2={BODY_Y + 0.5}
+            stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+          {/* Bottom edge */}
+          <line x1={BODY_X + BODY_R} y1={BODY_Y + BODY_H - 0.5}
+            x2={BODY_X + BODY_W - BODY_R} y2={BODY_Y + BODY_H - 0.5}
+            stroke="rgba(0,0,0,0.3)" strokeWidth="1" />
+
+          {/* Shackle holes */}
+          <ellipse cx={LEFT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
+            fill="rgba(0,0,0,0.5)" />
+          <ellipse cx={RIGHT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
+            fill="rgba(0,0,0,0.5)" />
+          <ellipse cx={LEFT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
+            fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
+          <ellipse cx={RIGHT_X} cy={BODY_Y + 2} rx={6.5} ry={3.5}
+            fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
+
+          {/* Keyhole */}
+          <circle cx={60} cy={99} r={7} fill="url(#keyholeGrad)" />
+          <rect x={57} y={99} width={6} height={14} rx={2.5} fill="url(#keyholeGrad)" />
+          <circle cx={60} cy={99} r={8.5}
+            fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" />
+
+          {/* Keyhole breathing glow */}
+          {isLocked && (
+            <motion.circle
+              cx={60} cy={99} r={10}
+              fill="none" stroke="#f5a623" strokeWidth="1"
+              animate={{
+                opacity: [0.0, 0.35, 0.0],
+                r: [10, 13, 10],
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
             />
-          </g>
-        ))}
-      </svg>
+          )}
+
+          {/* Face plate screws */}
+          {[
+            [BODY_X + 10, BODY_Y + 10],
+            [BODY_X + BODY_W - 10, BODY_Y + 10],
+            [BODY_X + 10, BODY_Y + BODY_H - 10],
+            [BODY_X + BODY_W - 10, BODY_Y + BODY_H - 10],
+          ].map(([cx, cy], i) => (
+            <g key={i}>
+              <circle cx={cx} cy={cy} r={2.5} fill="rgba(60,60,75,1)" />
+              <line
+                x1={(cx as number) - 1.5} y1={cy}
+                x2={(cx as number) + 1.5} y2={cy}
+                stroke="rgba(0,0,0,0.4)" strokeWidth="0.6" />
+            </g>
+          ))}
+        </svg>
+      </div>
 
       {/* ── Spark particles ── */}
       <AnimatePresence>
@@ -456,7 +448,6 @@ export default function UnlockAnimation({
                 height: p.size,
                 backgroundColor: p.color,
                 boxShadow: `0 0 ${p.size * 3}px ${p.color}, 0 0 ${p.size}px rgba(255,255,255,0.3)`,
-                // Right-side hole position in the rendered layout
                 top: "calc(50% + 6px)",
                 left: "calc(50% + 26px)",
               }}
@@ -470,7 +461,7 @@ export default function UnlockAnimation({
               transition={{
                 duration: p.duration,
                 delay: p.delay,
-                ease: [0.16, 0.9, 0.4, 1], // fast burst → exponential decay
+                ease: [0.16, 0.9, 0.4, 1],
                 times: [0, 0.3, 1],
               }}
               exit={{ opacity: 0 }}
