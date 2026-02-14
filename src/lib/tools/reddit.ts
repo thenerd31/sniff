@@ -24,35 +24,51 @@ interface LLMVerdict {
   confidence: number;
   summary: string;
   key_findings: string[];
+  relevantPostCount: number;
 }
+
+// Subreddits that indicate the post is about scam/trust analysis
+const TRUST_SUBREDDITS = new Set([
+  "scams", "scam", "isitascam", "isitbullshit", "fraudalert",
+  "reviews", "sitereview", "consumerprotection",
+]);
 
 export async function redditSearch(url: string): Promise<EvidenceCard> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
+  // Strip TLD for brand name: "nacelexpert.com" → "nacelexpert"
+  const brandName = domain.split(".")[0];
 
   try {
-    // Search Reddit for ALL mentions of this domain (unbiased query)
-    const searchUrl = `https://www.reddit.com/search.json?q="${domain}"&sort=relevance&limit=25`;
-    const response = await fetch(searchUrl, {
-      headers: {
-        "User-Agent": "Sentinel/1.0 (Investigation Bot)",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    // Run multiple targeted searches in parallel for better coverage
+    const searches = [
+      // Search 1: Domain + scam-related terms
+      fetchRedditPosts(`"${domain}" scam OR legit OR review OR fraud OR fake`),
+      // Search 2: Brand name + scam (catches posts that don't include the full URL)
+      fetchRedditPosts(`"${brandName}" scam OR legit OR review OR ripoff`),
+      // Search 3: Exact domain in scam-focused subreddits
+      fetchRedditPosts(`"${domain}"`, "scams"),
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Reddit API returned ${response.status}`);
+    const results = await Promise.allSettled(searches);
+    const allPosts = new Map<string, RedditPost>(); // dedup by permalink
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        for (const post of result.value) {
+          allPosts.set(post.permalink, post);
+        }
+      }
     }
 
-    const data: RedditSearchResponse = await response.json();
-    const posts = data.data.children.map((c) => c.data);
+    const posts = [...allPosts.values()];
 
     if (posts.length === 0) {
       return {
         id: uuidv4(),
         type: "review_analysis",
         severity: "info",
-        title: "No Reddit discussions found",
-        detail: `No posts mentioning "${domain}" found on Reddit — this could mean the site is too new or obscure`,
+        title: `No Reddit discussions found for ${domain}`,
+        detail: `No posts mentioning "${domain}" found on Reddit — this site has zero online presence, which is suspicious for any retailer`,
         source: "Reddit Search",
         confidence: 0.3,
         connections: [],
@@ -60,8 +76,71 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
       };
     }
 
+    // Pre-filter: prioritize posts that are actually about the retailer
+    const scoredPosts = posts.map((p) => {
+      let relevanceScore = 0;
+      const titleLower = p.title.toLowerCase();
+      const textLower = (p.selftext || "").toLowerCase();
+      const combined = titleLower + " " + textLower;
+
+      // Post mentions domain in title → very likely about the store
+      if (titleLower.includes(domain) || titleLower.includes(brandName)) {
+        relevanceScore += 10;
+      }
+
+      // Scam/trust keywords in title → high relevance
+      if (/scam|legit|fraud|fake|review|trust|safe|ripoff|complaint/.test(titleLower)) {
+        relevanceScore += 5;
+      }
+
+      // Posted in trust-related subreddits
+      if (TRUST_SUBREDDITS.has(p.subreddit.toLowerCase())) {
+        relevanceScore += 8;
+      }
+
+      // Post body discusses the domain specifically
+      if (combined.includes(domain)) {
+        relevanceScore += 3;
+      }
+
+      // Shopping/ecommerce subreddits
+      if (/deals|shopping|frugal|buyitforlife|consumer/.test(p.subreddit.toLowerCase())) {
+        relevanceScore += 2;
+      }
+
+      // Penalize posts that just happen to contain a link
+      // (like someone sharing a poshmark listing in a wedding sub)
+      if (relevanceScore <= 3 && !combined.includes("scam") && !combined.includes("legit")) {
+        relevanceScore = 0; // likely incidental mention
+      }
+
+      return { post: p, relevanceScore };
+    });
+
+    // Sort by relevance, take top 10
+    scoredPosts.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    const relevantPosts = scoredPosts
+      .filter((p) => p.relevanceScore > 0)
+      .slice(0, 10)
+      .map((p) => p.post);
+
+    // If no relevant posts after filtering, treat as no presence
+    if (relevantPosts.length === 0) {
+      return {
+        id: uuidv4(),
+        type: "review_analysis",
+        severity: "info",
+        title: `No relevant Reddit discussions for ${domain}`,
+        detail: `Found ${posts.length} posts mentioning "${domain}" but none discuss the retailer's trustworthiness — only incidental mentions`,
+        source: "Reddit Search",
+        confidence: 0.4,
+        connections: [],
+        metadata: { domain, postCount: posts.length, relevantCount: 0 },
+      };
+    }
+
     // Build context for LLM analysis
-    const postSummaries = posts.slice(0, 15).map((p) => {
+    const postSummaries = relevantPosts.map((p) => {
       const age = Math.floor(
         (Date.now() / 1000 - p.created_utc) / (60 * 60 * 24)
       );
@@ -71,7 +150,7 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
 
     const verdict = await analyzeWithLLM(domain, postSummaries);
 
-    const topPosts = posts.slice(0, 3).map((p) => ({
+    const topPosts = relevantPosts.slice(0, 3).map((p) => ({
       title: p.title,
       subreddit: p.subreddit,
       score: p.score,
@@ -91,6 +170,7 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
       metadata: {
         domain,
         postCount: posts.length,
+        relevantCount: relevantPosts.length,
         sentiment: verdict.sentiment,
         topPosts,
       },
@@ -110,6 +190,32 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
   }
 }
 
+async function fetchRedditPosts(
+  query: string,
+  subreddit?: string,
+): Promise<RedditPost[]> {
+  const base = subreddit
+    ? `https://www.reddit.com/r/${subreddit}/search.json`
+    : `https://www.reddit.com/search.json`;
+
+  const params = new URLSearchParams({
+    q: query,
+    sort: "relevance",
+    limit: "15",
+    ...(subreddit ? { restrict_sr: "true" } : {}),
+  });
+
+  const response = await fetch(`${base}?${params}`, {
+    headers: { "User-Agent": "Sentinel/1.0 (Shopping Fraud Detector)" },
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!response.ok) return [];
+
+  const data: RedditSearchResponse = await response.json();
+  return data.data.children.map((c) => c.data);
+}
+
 async function analyzeWithLLM(
   domain: string,
   postSummaries: string[]
@@ -123,35 +229,43 @@ async function analyzeWithLLM(
     messages: [
       {
         role: "system",
-        content: `You are a scam analysis expert. You will be given Reddit posts that mention a domain. Analyze the posts to determine whether the domain is trustworthy.
+        content: `You are a scam analysis expert. You will be given Reddit posts related to the domain "${domain}". Your job is to determine if this is a trustworthy retailer.
 
-Pay attention to:
-- What real users are saying about their experiences (positive or negative)
-- Whether complaints describe concrete scam patterns (never received product, impossible to get refund, fake goods, phishing, identity theft)
-- Whether positive posts seem authentic or astroturfed (generic praise, new accounts, suspiciously similar wording)
-- The subreddit context (r/Scams posts carry different weight than r/deals)
-- Engagement signals (high-upvote warnings are more credible than 0-upvote posts)
-- Recency (recent reports matter more than old ones)
+CRITICAL: Only consider posts that are ACTUALLY ABOUT the retailer/domain "${domain}". Ignore posts that:
+- Just happen to contain a link to ${domain} (e.g., someone sharing a product listing)
+- Are about a completely different topic but mention the domain incidentally
+- Are referral code spam
 
-Respond with a JSON object:
+Focus on posts where users:
+- Discuss whether ${domain} is legitimate or a scam
+- Share purchase experiences (positive or negative)
+- Report fraud, non-delivery, counterfeit goods, or billing issues
+- Review the retailer's customer service, shipping, returns
+
+Respond with JSON:
 {
   "sentiment": "scam" | "suspicious" | "mixed" | "legitimate" | "unrelated",
   "severity": "critical" | "warning" | "info" | "safe",
-  "confidence": <0.0-1.0 how confident you are in this assessment>,
-  "summary": "<one-line summary for the evidence card title, e.g. 'Multiple users report never receiving orders'>",
-  "key_findings": ["<finding 1>", "<finding 2>", "<finding 3>"]
+  "confidence": <0.0-1.0>,
+  "summary": "<one-line summary about the RETAILER, e.g. 'Multiple users report ${domain} never delivers orders'>",
+  "key_findings": ["<finding 1>", "<finding 2>", "<finding 3>"],
+  "relevantPostCount": <number of posts that are actually about the retailer>
 }
 
-Mapping guide:
-- "scam" → "critical": Multiple credible reports of fraud, theft, or deception
-- "suspicious" → "warning": Some red flags or complaints but not conclusive
-- "mixed" → "info": Both positive and negative signals, inconclusive
-- "legitimate" → "safe": Predominantly positive experiences, no scam indicators
-- "unrelated" → "info": Posts mention the domain but don't discuss trustworthiness`,
+If NONE of the posts are actually about the retailer's trustworthiness, return:
+- sentiment: "unrelated", severity: "info", relevantPostCount: 0
+- summary: "No relevant discussions about ${domain} found"
+
+Mapping:
+- "scam" → "critical": Credible reports of fraud or deception
+- "suspicious" → "warning": Red flags but not conclusive
+- "mixed" → "info": Both positive and negative, inconclusive
+- "legitimate" → "safe": Positive experiences, established retailer
+- "unrelated" → "info": Posts don't discuss the retailer's trustworthiness`,
       },
       {
         role: "user",
-        content: `Analyze these Reddit posts about the domain "${domain}":\n\n${postSummaries.join("\n\n---\n\n")}`,
+        content: `Analyze these Reddit posts about "${domain}":\n\n${postSummaries.join("\n\n---\n\n")}`,
       },
     ],
   });
