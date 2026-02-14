@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
 
@@ -17,12 +18,20 @@ interface RedditSearchResponse {
   };
 }
 
+interface LLMVerdict {
+  sentiment: "scam" | "suspicious" | "mixed" | "legitimate" | "unrelated";
+  severity: CardSeverity;
+  confidence: number;
+  summary: string;
+  key_findings: string[];
+}
+
 export async function redditSearch(url: string): Promise<EvidenceCard> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
 
   try {
-    // Search Reddit for mentions of this domain
-    const searchUrl = `https://www.reddit.com/search.json?q="${domain}"+scam+OR+fraud+OR+legit+OR+review&sort=relevance&limit=10`;
+    // Search Reddit for ALL mentions of this domain (unbiased query)
+    const searchUrl = `https://www.reddit.com/search.json?q="${domain}"&sort=relevance&limit=25`;
     const response = await fetch(searchUrl, {
       headers: {
         "User-Agent": "Sentinel/1.0 (Investigation Bot)",
@@ -45,36 +54,22 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
         title: "No Reddit discussions found",
         detail: `No posts mentioning "${domain}" found on Reddit — this could mean the site is too new or obscure`,
         source: "Reddit Search",
-        confidence: 0.5,
+        confidence: 0.3,
         connections: [],
         metadata: { domain, postCount: 0 },
       };
     }
 
-    // Analyze sentiment from post titles and content
-    const scamKeywords = /scam|fraud|fake|rip.?off|steal|stolen|phishing|avoid|beware|warning/i;
-    const negativeCount = posts.filter(
-      (p) => scamKeywords.test(p.title) || scamKeywords.test(p.selftext)
-    ).length;
+    // Build context for LLM analysis
+    const postSummaries = posts.slice(0, 15).map((p) => {
+      const age = Math.floor(
+        (Date.now() / 1000 - p.created_utc) / (60 * 60 * 24)
+      );
+      const text = p.selftext.length > 500 ? p.selftext.slice(0, 500) + "..." : p.selftext;
+      return `[r/${p.subreddit} | ${p.score} upvotes | ${p.num_comments} comments | ${age} days ago]\nTitle: ${p.title}\n${text ? `Body: ${text}` : "(no body)"}`;
+    });
 
-    const totalEngagement = posts.reduce(
-      (sum, p) => sum + p.score + p.num_comments,
-      0
-    );
-
-    let severity: CardSeverity;
-    let title: string;
-
-    if (negativeCount >= 3) {
-      severity = "critical";
-      title = `${negativeCount} scam reports found on Reddit`;
-    } else if (negativeCount >= 1) {
-      severity = "warning";
-      title = `${negativeCount} potential scam mention${negativeCount > 1 ? "s" : ""} on Reddit`;
-    } else {
-      severity = "safe";
-      title = `${posts.length} Reddit discussions found (no scam reports)`;
-    }
+    const verdict = await analyzeWithLLM(domain, postSummaries);
 
     const topPosts = posts.slice(0, 3).map((p) => ({
       title: p.title,
@@ -87,19 +82,16 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
     return {
       id: uuidv4(),
       type: "review_analysis",
-      severity,
-      title,
-      detail: topPosts
-        .map((p) => `r/${p.subreddit}: "${p.title}" (${p.score} upvotes)`)
-        .join(" | "),
-      source: "Reddit Search",
-      confidence: 0.75,
+      severity: verdict.severity,
+      title: verdict.summary,
+      detail: verdict.key_findings.join(" | "),
+      source: "Reddit Search (AI-analyzed)",
+      confidence: verdict.confidence,
       connections: [],
       metadata: {
         domain,
         postCount: posts.length,
-        negativeCount,
-        totalEngagement,
+        sentiment: verdict.sentiment,
         topPosts,
       },
     };
@@ -116,4 +108,58 @@ export async function redditSearch(url: string): Promise<EvidenceCard> {
       metadata: { domain, error: true },
     };
   }
+}
+
+async function analyzeWithLLM(
+  domain: string,
+  postSummaries: string[]
+): Promise<LLMVerdict> {
+  const openai = new OpenAI();
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    temperature: 0,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `You are a scam analysis expert. You will be given Reddit posts that mention a domain. Analyze the posts to determine whether the domain is trustworthy.
+
+Pay attention to:
+- What real users are saying about their experiences (positive or negative)
+- Whether complaints describe concrete scam patterns (never received product, impossible to get refund, fake goods, phishing, identity theft)
+- Whether positive posts seem authentic or astroturfed (generic praise, new accounts, suspiciously similar wording)
+- The subreddit context (r/Scams posts carry different weight than r/deals)
+- Engagement signals (high-upvote warnings are more credible than 0-upvote posts)
+- Recency (recent reports matter more than old ones)
+
+Respond with a JSON object:
+{
+  "sentiment": "scam" | "suspicious" | "mixed" | "legitimate" | "unrelated",
+  "severity": "critical" | "warning" | "info" | "safe",
+  "confidence": <0.0-1.0 how confident you are in this assessment>,
+  "summary": "<one-line summary for the evidence card title, e.g. 'Multiple users report never receiving orders'>",
+  "key_findings": ["<finding 1>", "<finding 2>", "<finding 3>"]
+}
+
+Mapping guide:
+- "scam" → "critical": Multiple credible reports of fraud, theft, or deception
+- "suspicious" → "warning": Some red flags or complaints but not conclusive
+- "mixed" → "info": Both positive and negative signals, inconclusive
+- "legitimate" → "safe": Predominantly positive experiences, no scam indicators
+- "unrelated" → "info": Posts mention the domain but don't discuss trustworthiness`,
+      },
+      {
+        role: "user",
+        content: `Analyze these Reddit posts about the domain "${domain}":\n\n${postSummaries.join("\n\n---\n\n")}`,
+      },
+    ],
+  });
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("LLM returned empty response");
+  }
+
+  return JSON.parse(content) as LLMVerdict;
 }

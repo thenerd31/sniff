@@ -12,27 +12,42 @@ import type { EvidenceCard } from "@/types";
 const openai = new OpenAI();
 
 // ── System Prompt ──────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Sentinel, an AI investigation agent that analyzes URLs for potential scams and fraud.
+const SYSTEM_PROMPT = `You are Sentinel, an AI investigation agent that analyzes URLs for potential scams and fraud. You present findings on a visual investigation board.
 
-You have investigation tools that return evidence. After each tool call, you receive structured findings. Your job is to:
+STEP 1 — GATHER EVIDENCE:
+Call ALL of these tools in your first turn (call them all at once in parallel):
+- whois_lookup
+- ssl_analysis
+- safe_browsing_check
+- scrape_red_flags
+- reddit_search
+- scamadviser_check
 
-1. Decide WHICH tools to call and in what order. Start broad (whois, ssl, safe_browsing), then go specific (reddit, scraper, scamadviser).
-2. After receiving all tool results, call emit_evidence_card for EACH meaningful finding to pin it to the user's visual investigation board.
-3. Connect related cards using connectTo IDs — show how evidence links together.
-4. Call set_threat_score with your holistic assessment (0-100) and reasoning.
+STEP 2 — EMIT EVIDENCE CARDS:
+After receiving tool results, you MUST call emit_evidence_card for EVERY finding. Create one card per tool result at minimum. You MUST emit at least 6 cards. For each card:
+- Write a clear, specific title (e.g. "Domain registered 6 days ago" not "Domain information")
+- Include exact numbers, dates, registrars, countries in the detail
+- Set severity based on the guide below
+- Use connectTo to link related cards by their IDs
+
+STEP 3 — SET THREAT SCORE:
+After emitting ALL cards, you MUST call set_threat_score exactly once with:
+- score: 0-100 based on the totality of evidence
+- reasoning: 1-2 sentence explanation
 
 SEVERITY GUIDE:
-- critical: Strong fraud indicator (domain < 30 days old, known scam reports, SSL mismatch)
-- warning: Suspicious but not conclusive (no return policy, limited history, new domain < 1 year)
-- info: Neutral finding worth noting
-- safe: Positive indicator (established domain, valid SSL, good reviews)
+- critical: Strong fraud indicator (domain < 30 days old, known scam reports, SSL mismatch, flagged by Safe Browsing)
+- warning: Suspicious but not conclusive (no return policy, limited history, domain < 1 year, failed tool checks)
+- info: Neutral finding worth noting (no Reddit mentions, inconclusive data)
+- safe: Positive indicator (established domain, valid SSL, good reviews, not flagged)
 
-RULES:
-- Emit 6-10 evidence cards. Be thorough.
-- Be specific: include exact dates, registrars, countries, ages in days.
-- Write titles and details that a non-technical person can understand.
-- If a tool fails or returns no data, still emit an info card noting the gap.
-- Connect cards that reinforce or relate to each other.`;
+THREAT SCORE GUIDE:
+- 0-25: Low risk. Established, legitimate site.
+- 26-50: Moderate. Some concerns but not conclusive.
+- 51-75: High risk. Multiple red flags.
+- 76-100: Critical. Strong evidence of fraud.
+
+IMPORTANT: You MUST emit at least 6 evidence cards and MUST call set_threat_score. Do NOT skip these steps.`;
 
 // ── Tool Definition Helper ──────────────────────────────────────────────
 function defineTool(name: string, description: string, parameters?: Record<string, unknown>): OpenAI.Responses.Tool {
@@ -139,7 +154,8 @@ async function executeTool(
     }
     case "set_threat_score": {
       send("threat_score", { score: parseFloat(args.score) || 0 });
-      return JSON.stringify({ success: true });
+      send("narration", { text: `Threat assessment: ${args.reasoning || ""}` });
+      return JSON.stringify({ success: true, tool: "set_threat_score" });
     }
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });
@@ -155,6 +171,7 @@ export async function POST(req: NextRequest) {
     try {
       const domain = new URL(url).hostname;
       const cardIds: string[] = [];
+      let threatScoreSet = false;
       const userMessage = `Investigate this URL for potential fraud or scams: ${url} (domain: ${domain})`;
 
       // Accumulate full conversation history for context
@@ -197,6 +214,7 @@ export async function POST(req: NextRequest) {
           if (call.type !== "function_call") continue;
 
           send("narration", { text: `Running ${call.name.replace(/_/g, " ")}...` });
+          if (call.name === "set_threat_score") threatScoreSet = true;
 
           try {
             const args = JSON.parse(call.arguments);
@@ -232,6 +250,27 @@ export async function POST(req: NextRequest) {
         const textContent = textOutput.content.find((c) => c.type === "output_text");
         if (textContent && textContent.type === "output_text") {
           send("narration", { text: textContent.text });
+        }
+      }
+
+      // If the agent didn't set a threat score, force one more call
+      if (!threatScoreSet) {
+        // Check if any emit_evidence_card was called to determine if we have cards
+        const hasCards = cardIds.length > 0;
+        if (hasCards) {
+          const forceScore = await openai.responses.create({
+            model: "gpt-4o",
+            instructions: "You are Sentinel. Based on the investigation so far, you MUST call set_threat_score with a score (0-100) and reasoning. Do it now.",
+            input: conversationHistory,
+            tools: tools.filter((t) => t.type === "function" && t.name === "set_threat_score"),
+          });
+          for (const item of forceScore.output) {
+            if (item.type === "function_call") {
+              const args = JSON.parse(item.arguments);
+              send("threat_score", { score: parseFloat(args.score) || 0 });
+              send("narration", { text: `Threat assessment: ${args.reasoning || ""}` });
+            }
+          }
         }
       }
 

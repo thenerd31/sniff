@@ -1,106 +1,111 @@
-import * as whois from "whois";
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
 
-interface WhoisResult {
-  domainName?: string;
+interface ApiNinjasWhois {
+  domain_name?: string | string[];
   registrar?: string;
-  creationDate?: string;
-  expirationDate?: string;
+  creation_date?: string | string[];
+  expiration_date?: string | string[];
+  name_servers?: string[];
+  dnssec?: string;
+  org?: string;
+  state?: string;
   country?: string;
-  registrantOrganization?: string;
-  nameServers?: string[];
-}
-
-function parseWhoisData(raw: string): WhoisResult {
-  const result: WhoisResult = {};
-  const lines = raw.split("\n");
-
-  for (const line of lines) {
-    const [key, ...valueParts] = line.split(":");
-    if (!key || valueParts.length === 0) continue;
-    const value = valueParts.join(":").trim();
-    const keyLower = key.trim().toLowerCase();
-
-    if (keyLower.includes("domain name") && !result.domainName) {
-      result.domainName = value;
-    } else if (keyLower.includes("registrar") && !keyLower.includes("abuse") && !result.registrar) {
-      result.registrar = value;
-    } else if (keyLower.includes("creation date") && !result.creationDate) {
-      result.creationDate = value;
-    } else if (keyLower.includes("expir") && keyLower.includes("date") && !result.expirationDate) {
-      result.expirationDate = value;
-    } else if (keyLower.includes("registrant country") && !result.country) {
-      result.country = value;
-    } else if (keyLower.includes("registrant organization") && !result.registrantOrganization) {
-      result.registrantOrganization = value;
-    } else if (keyLower.includes("name server") && !result.nameServers) {
-      result.nameServers = result.nameServers || [];
-      result.nameServers.push(value.toLowerCase());
-    }
-  }
-
-  return result;
-}
-
-function lookupWhois(domain: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    whois.lookup(domain, (err: Error | null, data: unknown) => {
-      if (err) reject(err);
-      else if (typeof data === "string") resolve(data);
-      else if (Array.isArray(data)) resolve(data.map((d) => d.data || "").join("\n"));
-      else resolve(String(data));
-    });
-  });
 }
 
 export async function whoisLookup(url: string): Promise<EvidenceCard> {
   const domain = new URL(url).hostname.replace(/^www\./, "");
+  const apiKey = process.env.API_NINJAS_KEY;
+
+  if (!apiKey) {
+    return {
+      id: uuidv4(),
+      type: "domain",
+      severity: "info",
+      title: "WHOIS lookup skipped",
+      detail: "API Ninjas key not configured",
+      source: "WHOIS Lookup",
+      confidence: 0,
+      connections: [],
+      metadata: { domain, skipped: true },
+    };
+  }
 
   try {
-    const raw = await lookupWhois(domain);
-    const parsed = parseWhoisData(raw);
+    const response = await fetch(
+      `https://api.api-ninjas.com/v1/whois?domain=${encodeURIComponent(domain)}`,
+      {
+        headers: { "X-Api-Key": apiKey },
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API Ninjas returned ${response.status}`);
+    }
+
+    const data: ApiNinjasWhois = await response.json();
 
     let severity: CardSeverity = "safe";
     let title = `Domain: ${domain}`;
     const details: string[] = [];
 
-    if (parsed.creationDate) {
-      const created = new Date(parsed.creationDate);
-      const ageMs = Date.now() - created.getTime();
-      const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    // creation_date can be a string or array — normalize
+    const creationRaw = Array.isArray(data.creation_date)
+      ? data.creation_date[0]
+      : data.creation_date;
 
-      if (ageDays < 30) {
-        severity = "critical";
-        title = `Domain registered ${ageDays} days ago`;
-      } else if (ageDays < 365) {
-        severity = "warning";
-        title = `Domain is ${ageDays} days old`;
-      } else {
-        title = `Domain is ${Math.floor(ageDays / 365)} years old`;
+    if (creationRaw) {
+      // API Ninjas returns Unix timestamp (seconds) as a number in string form,
+      // or an ISO date string — handle both
+      const created = /^\d+$/.test(creationRaw)
+        ? new Date(parseInt(creationRaw) * 1000)
+        : new Date(creationRaw);
+
+      if (!isNaN(created.getTime())) {
+        const ageMs = Date.now() - created.getTime();
+        const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+
+        if (ageDays < 30) {
+          severity = "critical";
+          title = `Domain registered ${ageDays} days ago`;
+        } else if (ageDays < 365) {
+          severity = "warning";
+          title = `Domain is ${ageDays} days old`;
+        } else {
+          title = `Domain is ${Math.floor(ageDays / 365)} years old`;
+        }
+
+        details.push(`Registered: ${created.toLocaleDateString()}`);
       }
-
-      details.push(`Registered: ${created.toLocaleDateString()}`);
     }
 
-    if (parsed.registrar) details.push(`Registrar: ${parsed.registrar}`);
-    if (parsed.country) details.push(`Country: ${parsed.country}`);
-    if (parsed.registrantOrganization) details.push(`Organization: ${parsed.registrantOrganization}`);
-    if (parsed.expirationDate) details.push(`Expires: ${new Date(parsed.expirationDate).toLocaleDateString()}`);
+    if (data.registrar) details.push(`Registrar: ${data.registrar}`);
+    if (data.country) details.push(`Country: ${data.country}`);
+    if (data.org) details.push(`Organization: ${data.org}`);
+
+    const expirationRaw = Array.isArray(data.expiration_date)
+      ? data.expiration_date[0]
+      : data.expiration_date;
+    if (expirationRaw) {
+      const expires = /^\d+$/.test(expirationRaw)
+        ? new Date(parseInt(expirationRaw) * 1000)
+        : new Date(expirationRaw);
+      if (!isNaN(expires.getTime())) {
+        details.push(`Expires: ${expires.toLocaleDateString()}`);
+      }
+    }
 
     return {
       id: uuidv4(),
       type: "domain",
       severity,
       title,
-      detail: details.join(" | "),
+      detail: details.join(" | ") || "No WHOIS details available",
       source: "WHOIS Lookup",
       confidence: 0.9,
       connections: [],
-      metadata: {
-        domain,
-        raw: parsed,
-      },
+      metadata: { domain, raw: data },
     };
   } catch (error) {
     return {
