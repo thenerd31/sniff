@@ -8,6 +8,7 @@ import {
   updateThreatScore as storeUpdateThreatScore,
   incrementTurn,
 } from "@/lib/investigationStore";
+import { calcIncrementalScore, computeFinalThreatScore } from "@/lib/scoring";
 import type { EvidenceCard, SSEEvent } from "@/types";
 
 function getOpenAI() {
@@ -17,7 +18,7 @@ function getOpenAI() {
 const INVESTIGATE_SYSTEM_PROMPT = `You are Sentinel, an AI investigation agent that exposes online scams and protects consumers. You have access to several investigation tools.
 
 When given a URL to investigate:
-1. Run whois_lookup, ssl_analysis, safe_browsing_check, and scrape_red_flags in your first round of tool calls
+1. Run whois_lookup, ssl_analysis, safe_browsing_check, scrape_red_flags, and brand_impersonation_check in your first round of tool calls
 2. Also run reddit_search and scamadviser_check
 3. After receiving all tool results, analyze the evidence holistically
 4. Provide a narration summarizing your findings and an overall threat assessment
@@ -49,7 +50,8 @@ export async function runInvestigation(
     INVESTIGATE_SYSTEM_PROMPT,
     `Investigate this URL for potential scams: ${url}`,
     writer,
-    investigationId
+    investigationId,
+    url
   );
 }
 
@@ -95,7 +97,8 @@ Build on these findings — don't repeat what's already known. Focus on NEW evid
     INVESTIGATE_SYSTEM_PROMPT,
     contextualPrompt,
     writer,
-    investigationId
+    investigationId,
+    investigation.url
   );
 }
 
@@ -106,7 +109,9 @@ export async function runCompare(
   await runAgent(
     INVESTIGATE_SYSTEM_PROMPT,
     `Find and compare prices for the product at this URL across legitimate retailers: ${productUrl}`,
-    writer
+    writer,
+    undefined,
+    productUrl
   );
 }
 
@@ -114,12 +119,15 @@ async function runAgent(
   systemPrompt: string,
   userMessage: string,
   writer: SSEWriter,
-  investigationId?: string
+  investigationId?: string,
+  url?: string
 ): Promise<void> {
   let threatScore = investigationId
     ? (getInvestigation(investigationId)?.threatScore ?? 0)
     : 0;
   let cardCount = 0;
+  // Collect all cards so the veto scorer can see the full picture at the end
+  const roundCards: EvidenceCard[] = [];
 
   try {
     const response = await getOpenAI().responses.create({
@@ -156,7 +164,9 @@ async function runAgent(
               for (const card of cards) {
                 writer({ event: "card", data: card });
                 cardCount++;
-                threatScore = calcThreatScore(threatScore, card);
+                roundCards.push(card);
+                // Incremental score for real-time UX — will be overridden by veto pass below
+                threatScore = calcIncrementalScore(threatScore, card);
                 writer({ event: "threat_score", data: { score: threatScore } });
               }
 
@@ -180,6 +190,20 @@ async function runAgent(
             }
           })
       );
+
+      // ── Critical Veto pass ────────────────────────────────────────────
+      // Once all tools have run, re-compute the authoritative threat score
+      // using the tiered hierarchy. This overrides the incremental estimate.
+      if (url && roundCards.length > 0) {
+        const vetoScore = computeFinalThreatScore(roundCards, url);
+        if (vetoScore !== threatScore) {
+          threatScore = vetoScore;
+          writer({ event: "threat_score", data: { score: threatScore } });
+          if (investigationId) {
+            storeUpdateThreatScore(investigationId, threatScore);
+          }
+        }
+      }
 
       // Send tool results back for final analysis
       const followUp = await getOpenAI().responses.create({
@@ -236,13 +260,3 @@ async function runAgent(
   }
 }
 
-function calcThreatScore(current: number, card: EvidenceCard): number {
-  const severityWeights: Record<string, number> = {
-    critical: 20,
-    warning: 10,
-    info: 2,
-    safe: -5,
-  };
-  const delta = severityWeights[card.severity] ?? 0;
-  return Math.max(0, Math.min(100, current + delta));
-}

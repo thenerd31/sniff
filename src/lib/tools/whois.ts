@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
+import { classifyToolError } from "./error-classify";
 
 interface ApiNinjasWhois {
   domain_name?: string | string[];
@@ -108,16 +109,17 @@ export async function whoisLookup(url: string): Promise<EvidenceCard> {
       metadata: { domain, raw: data },
     };
   } catch (error) {
+    const classification = classifyToolError(error);
     return {
       id: uuidv4(),
       type: "domain",
-      severity: "warning",
+      severity: classification.severity,
       title: `WHOIS lookup failed for ${domain}`,
       detail: `Could not retrieve WHOIS data: ${error instanceof Error ? error.message : "Unknown error"}`,
       source: "WHOIS Lookup",
       confidence: 0.3,
       connections: [],
-      metadata: { domain, error: true },
+      metadata: { domain, error: true, suspicious: classification.suspicious },
     };
   }
 }

@@ -173,3 +173,37 @@ src/
     ├── deepen/route.ts         ← POST /api/deepen
     └── compare/route.ts        ← POST /api/compare
 ```
+
+What was already implemented (your partial work)
+All four new modules were already written correctly and just needed to be wired in:
+
+scoring.ts — Critical Veto tiered scorer
+known-domains.ts — High-authority allowlist
+brand-impersonation.ts — LLM Judge
+error-classify.ts — Smart error handler
+What was wired up in this session
+tools/index.ts
+
+Imported brandImpersonationCheck
+Added brand_impersonation_check to toolDefinitions (so the LLM knows to call it)
+Added the case to executeTool
+agent.ts
+
+Imported calcIncrementalScore + computeFinalThreatScore from scoring.ts
+Added url?: string param to runAgent; all three callers now pass the URL
+Added a roundCards accumulator inside the tool loop
+After Promise.all resolves, runs the Critical Veto pass — if the veto score differs from the incremental estimate, streams one final corrective threat_score event
+Removed the now-redundant local calcThreatScore function
+Added brand_impersonation_check to the system prompt's tool list
+Flow now
+
+tools run in parallel (incremental score streams live)
+          ↓
+all tools done → computeFinalThreatScore(allCards, url)
+  ├── Tier 4: known domain?          → 0  (immediate SAFE)
+  ├── Tier 1: brand impersonation / Safe Browsing? → 100 (RED)
+  ├── Tier 2: young domain + free SSL?             → 75
+  ├── Tier 3: scraper red flags?                   → 45
+  └── fallback: additive
+          ↓
+final threat_score event streamed → narration

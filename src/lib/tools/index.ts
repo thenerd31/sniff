@@ -5,6 +5,7 @@ import { scrapeForRedFlags } from "./scraper";
 import { redditSearch } from "./reddit";
 import { scamadviserCheck } from "./scamadviser";
 import { priceSearch } from "./priceSearch";
+import { brandImpersonationCheck } from "./brand-impersonation";
 import type { EvidenceCard } from "@/types";
 
 function defineTool(name: string, description: string) {
@@ -54,6 +55,10 @@ export const toolDefinitions = [
     "price_search",
     "Searches for the same product across legitimate retailers to compare prices. Use this for price comparison investigations and to find better deals."
   ),
+  defineTool(
+    "brand_impersonation_check",
+    "Uses an LLM to detect whether the URL is impersonating a well-known brand. Catches typosquatting (amaz0n, paypai), keyword stuffing (apple-support-team.com), and lookalike TLDs that Levenshtein-based checks miss."
+  ),
 ];
 
 // Tool executor map
@@ -76,6 +81,8 @@ export async function executeTool(
       return scamadviserCheck(args.url);
     case "price_search":
       return priceSearch(args.url);
+    case "brand_impersonation_check":
+      return brandImpersonationCheck(args.url);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
