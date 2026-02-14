@@ -7,6 +7,7 @@ import { sslAnalysis } from "@/lib/tools/ssl";
 import { redditSearch } from "@/lib/tools/reddit";
 import { scrapeForRedFlags } from "@/lib/tools/scraper";
 import { scamadviserCheck } from "@/lib/tools/scamadviser";
+import { webSearch } from "@/lib/tools/webSearch";
 import type { EvidenceCard } from "@/types";
 
 const openai = new OpenAI();
@@ -69,6 +70,7 @@ export async function POST(req: NextRequest) {
         { name: "Reddit Search", fn: () => redditSearch(url) },
         { name: "Page Scanner", fn: () => scrapeForRedFlags(url) },
         { name: "ScamAdviser", fn: () => scamadviserCheck(url) },
+        { name: "Web Research", fn: () => webSearch(url) },
       ];
 
       // Execute all tools in parallel, stream each result as it arrives
