@@ -228,64 +228,14 @@ function SavingsCard({
 }
 
 /* ──────────────────────── Hero Search ───────────────────────── */
-interface Refinement {
-  label: string;
-  options: string[];
-}
-
 function HeroSearch() {
-  const [query, setQuery] = useState("");
-  const [refinements, setRefinements] = useState<Refinement[] | null>(null);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [url, setUrl] = useState("");
   const router = useRouter();
 
-  async function handleSearch() {
-    const q = query.trim();
-    if (!q) return;
-
-    setLoading(true);
-    setRefinements(null);
-    setSelected({});
-
-    try {
-      const res = await fetch("/api/clarify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-      });
-      const data = await res.json();
-
-      if (data.ready) {
-        router.push(`/results?q=${encodeURIComponent(q)}`);
-      } else {
-        setRefinements(data.refinements);
-        setLoading(false);
-      }
-    } catch {
-      // On error, just go to results
-      router.push(`/results?q=${encodeURIComponent(q)}`);
-    }
+  function handleInvestigate() {
+    const target = url.trim() || "https://www.amazon.com/dp/B0DEMO12345";
+    router.push(`/board_test?url=${encodeURIComponent(target)}`);
   }
-
-  function handleRefinementClick(label: string, option: string) {
-    setSelected((prev) => ({ ...prev, [label]: option }));
-  }
-
-  function handleRefinedSearch() {
-    const parts = [query.trim()];
-    for (const r of refinements || []) {
-      const pick = selected[r.label];
-      if (pick && !pick.toLowerCase().startsWith("any")) {
-        parts.push(pick);
-      }
-    }
-    const refined = parts.join(" ");
-    router.push(`/results?q=${encodeURIComponent(refined)}`);
-  }
-
-  // Check if user has selected at least one refinement
-  const hasSelection = Object.keys(selected).length > 0;
 
   return (
     <>
@@ -293,60 +243,23 @@ function HeroSearch() {
         <Search className="ml-4 h-5 w-5 shrink-0 text-subtle" />
         <input
           type="text"
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setRefinements(null); setSelected({}); }}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="What are you looking for?"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleInvestigate()}
+          placeholder="Paste any product link to find the best price..."
           className="h-14 flex-1 bg-transparent px-3 text-[15px] text-foreground placeholder:text-subtle focus:outline-none"
         />
         <button
-          onClick={handleSearch}
-          disabled={loading}
-          className="m-1.5 flex h-11 items-center gap-2 rounded-xl bg-brand px-6 text-[14px] font-semibold text-white shadow-[0_2px_8px_rgba(255,107,0,0.3)] transition-all hover:shadow-[0_4px_16px_rgba(255,107,0,0.4)] hover:brightness-110 disabled:opacity-50"
+          onClick={handleInvestigate}
+          className="m-1.5 flex h-11 items-center gap-2 rounded-xl bg-brand px-6 text-[14px] font-semibold text-white shadow-[0_2px_8px_rgba(255,107,0,0.3)] transition-all hover:shadow-[0_4px_16px_rgba(255,107,0,0.4)] hover:brightness-110"
         >
-          {loading ? "..." : "Search"}
+          Find Deals
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
-
-      {/* Refinement pills */}
-      {refinements && (
-        <div className="mt-4 flex w-full max-w-[600px] flex-col gap-3">
-          {refinements.map((r) => (
-            <div key={r.label} className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-muted w-16">{r.label}</span>
-              {r.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => handleRefinementClick(r.label, opt)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
-                    selected[r.label] === opt
-                      ? "border-brand bg-brand/10 text-brand"
-                      : "border-gray-200 bg-white/60 text-foreground hover:border-brand/30 hover:bg-brand/5"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          ))}
-          {hasSelection && (
-            <button
-              onClick={handleRefinedSearch}
-              className="mt-1 flex items-center gap-2 self-center rounded-xl bg-brand px-6 py-2.5 text-[14px] font-semibold text-white shadow-[0_2px_8px_rgba(255,107,0,0.3)] transition-all hover:shadow-[0_4px_16px_rgba(255,107,0,0.4)] hover:brightness-110"
-            >
-              Search
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {!refinements && (
-        <p className="text-sm text-muted">
-          Try &ldquo;airpods pro 2&rdquo; or &ldquo;leather jacket&rdquo; or paste a product URL
-        </p>
-      )}
+      <p className="text-sm text-muted">
+        Works with Amazon, Walmart, eBay, AliExpress &amp; more
+      </p>
     </>
   );
 }
