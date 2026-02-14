@@ -10,11 +10,11 @@ import type { EvidenceCard } from "@/types";
 
 const ProductSchema = z.object({
   name: z.string().describe("The full product name"),
-  price: z.number().describe("The current price in USD (the final price the customer pays, not the original/crossed-out price)"),
-  inStock: z.boolean().describe("Whether the product is currently in stock / available"),
-  rating: z.number().optional().describe("Star rating out of 5"),
-  reviewCount: z.number().optional().describe("Number of reviews"),
-  seller: z.string().optional().describe("The seller or retailer name"),
+  price: z.number().nullable().describe("The current price in USD (the final price the customer pays, not the original/crossed-out price). Null if not visible."),
+  inStock: z.boolean().nullable().describe("Whether the product is currently in stock / available. Null if unclear."),
+  rating: z.number().nullable().describe("Star rating out of 5"),
+  reviewCount: z.number().nullable().describe("Number of reviews"),
+  seller: z.string().nullable().describe("The seller or retailer name"),
 });
 
 const SearchResultsSchema = z.object({
@@ -33,7 +33,7 @@ async function createStagehand(): Promise<Stagehand> {
     apiKey: process.env.BROWSERBASE_API_KEY,
     projectId: process.env.BROWSERBASE_PROJECT_ID,
     model: {
-      modelName: "gpt-4o-mini" as AvailableModel,
+      modelName: "openai/gpt-4o-mini" as AvailableModel,
       apiKey: process.env.OPENAI_API_KEY,
     },
   });
@@ -51,12 +51,77 @@ export async function scrapeProductPage(url: string): Promise<EvidenceCard | nul
     await page.goto(url, { waitUntil: "domcontentloaded", timeoutMs: 20000 });
 
     // AI extracts structured product data from ANY page layout
-    const product = await stagehand.extract(
+    let product = await stagehand.extract(
       "Extract the product name, current price (in USD, the price the customer actually pays today), stock availability, star rating, review count, and seller name from this product page.",
       ProductSchema,
     );
 
-    if (!product || !product.price || product.price <= 0) return null;
+    // If price is null, try scrolling to price area and re-extracting
+    if (product?.name && (!product.price || product.price <= 0)) {
+      console.log(`Browserbase: got product "${product.name}" but no price — trying scroll + re-extract`);
+      try {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.waitForTimeout(2000);
+
+        // Try to get price from DOM directly (common selectors)
+        const domPrice = await page.evaluate(() => {
+          const selectors = [
+            '.a-price .a-offscreen',           // Amazon
+            '[data-testid="price"]',            // Various
+            '.price-characteristic',            // Walmart
+            '.priceView-customer-price span',   // Best Buy
+            '.product-price',                   // Generic
+            '[itemprop="price"]',               // Schema.org
+            '.price',                           // Generic
+          ];
+          for (const sel of selectors) {
+            const el = document.querySelector(sel);
+            if (el?.textContent) {
+              const match = el.textContent.match(/\$?([\d,]+\.?\d*)/);
+              if (match) return parseFloat(match[1].replace(/,/g, ''));
+            }
+          }
+          return null;
+        });
+
+        if (domPrice && domPrice > 0) {
+          console.log(`Browserbase: DOM fallback found price $${domPrice}`);
+          product = { ...product, price: domPrice, inStock: product.inStock ?? true };
+        }
+      } catch (e) {
+        console.log("Browserbase: DOM price fallback failed", e);
+      }
+    }
+
+    if (!product || !product.price || product.price <= 0) {
+      if (product?.name) {
+        console.log(`Browserbase: no price found for "${product.name}"`);
+        // Return a partial card with just the name — the pipeline can use this
+        return {
+          id: uuidv4(),
+          type: "price",
+          severity: "info",
+          title: product.name,
+          detail: product.name,
+          source: "Browserbase Scraper",
+          confidence: 0.3,
+          connections: [],
+          metadata: {
+            retailer: product.seller || new URL(url).hostname.replace(/^www\./, ""),
+            price: 0, // No price found
+            currency: "USD",
+            url,
+            inStock: product.inStock,
+            rating: product.rating,
+            reviewsCount: product.reviewCount,
+            seller: product.seller,
+            verified: false,
+            nameOnly: true, // Flag: we have the name but not the price
+          },
+        };
+      }
+      return null;
+    }
 
     const host = new URL(url).hostname.replace(/^www\./, "");
 
