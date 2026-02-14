@@ -445,9 +445,9 @@ export default function Home() {
               </span>
             </div>
             <h2 className="mb-5 text-[clamp(2rem,5vw,3.5rem)] leading-[1.1] tracking-tight">
-              <span className="font-display italic text-white">Scrape, </span>
+              <span className="text-white">Scrape, </span>
               <span className="text-white">Trace and </span>
-              <span className="text-white">Save</span>
+              <span className="font-display italic text-[#00d4aa]">Save</span>
             </h2>
             <p className="max-w-[700px] text-base leading-relaxed text-[#9ca3af] md:text-lg">
               Extract live prices from any retailer, trace products back to
@@ -658,17 +658,25 @@ export default function Home() {
       />
 
       {/* ═══════════════ SOCIAL PROOF / SAVINGS ═══════════════ */}
-      <section className="relative z-10 -mt-32 px-6 py-24">
+      <section className="relative z-10 -mt-45 px-6 py-24">
         <div className="mx-auto max-w-[1000px]">
-          <div className="mb-4 flex items-center justify-center gap-2">
-            <Tag className="h-5 w-5 text-coral" />
-            <h2 className="text-center text-3xl font-semibold tracking-tight text-white md:text-4xl">
-              Real savings, real products
+          <div className="mb-16 flex flex-col items-center text-center">
+            <div className="mb-5 flex items-center gap-2">
+              <Tag className="h-4 w-4 text-coral" />
+              <span className="text-xs font-medium uppercase tracking-[2px] text-coral">
+                Real Savings
+              </span>
+            </div>
+            <h2 className="mb-5 text-[clamp(2rem,5vw,3.5rem)] leading-[1.1] tracking-tight">
+              <span className="text-white">Real </span>
+              <span className="font-display italic text-coral">Savings, </span>
+              <span className="text-white">Real </span>
+              <span className="font-display italic text-coral">Products</span>
             </h2>
+            <p className="max-w-[500px] text-base leading-relaxed text-[#9ca3af]">
+              Examples of markups Sentinel has uncovered.
+            </p>
           </div>
-          <p className="mx-auto mb-16 max-w-[500px] text-center text-base text-white/40">
-            Examples of markups Sentinel has uncovered.
-          </p>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <SavingsCard
@@ -776,7 +784,7 @@ export default function Home() {
       >
         <div className="mx-auto max-w-[640px] text-center">
           <h2 className="mb-6 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-            Built at TreeHacks 2025
+            Built at TreeHacks 2026
           </h2>
           <p className="text-base leading-relaxed text-white/50">
             Sentinel started as a question: why do we pay 5&ndash;10x markup
