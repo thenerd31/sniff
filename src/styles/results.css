@@ -129,14 +129,56 @@
   100% { opacity: 0; }
 }
 
-/* ── Dirt/underground background ──────────────────────────── */
+/* ── Digging placeholder animations ──────────────────────── */
+@keyframes shovel-dig {
+  0%, 100% { transform: rotate(0deg) translateY(0px); }
+  25% { transform: rotate(-15deg) translateY(-4px); }
+  50% { transform: rotate(10deg) translateY(6px); }
+  75% { transform: rotate(-5deg) translateY(2px); }
+}
+
+@keyframes dirt-particles {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-20px) scale(0); opacity: 0; }
+}
+
+@keyframes retro-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes dots-cycle {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+/* ── Animated dirt/underground background ─────────────────── */
+@keyframes dirt-pan {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 32px, 0 32px; }
+}
+
 .dirt-underground {
-  background:
+  background-color: #5C4033;
+  background-image:
     repeating-linear-gradient(
       0deg,
-      #8B7355 0px, #8B7355 8px,
-      #7A6548 8px, #7A6548 16px
+      transparent 0px,
+      transparent 6px,
+      rgba(0, 0, 0, 0.08) 6px,
+      rgba(0, 0, 0, 0.08) 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 14px,
+      rgba(0, 0, 0, 0.04) 14px,
+      rgba(0, 0, 0, 0.04) 16px
     );
+  background-size: 16px 32px, 16px 32px;
+  animation: dirt-pan 4s linear infinite;
   image-rendering: pixelated;
   position: relative;
 }
@@ -145,12 +187,11 @@
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0px, transparent 24px,
-      rgba(0,0,0,0.05) 24px, rgba(0,0,0,0.05) 32px
-    );
+  background-image:
+    radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,248,232,0.03) 1px, transparent 1px);
+  background-size: 24px 24px, 32px 32px;
+  background-position: 0 0, 12px 12px;
   pointer-events: none;
 }
 

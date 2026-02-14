@@ -929,6 +929,131 @@ function DigDeeperPanel({
 
 
 /* ═══════════════════════════════════════════════════════════════
+   DIGGING PLACEHOLDER — shown while agent is still investigating
+   ═══════════════════════════════════════════════════════════════ */
+
+function PixelShovel() {
+  return (
+    <svg
+      width="64"
+      height="64"
+      viewBox="0 0 16 16"
+      style={{ imageRendering: "pixelated" }}
+    >
+      {/* Handle */}
+      <rect x="7" y="0" width="2" height="2" fill="#8B6914" />
+      <rect x="7" y="2" width="2" height="6" fill="#A07828" />
+      <rect x="6" y="2" width="1" height="1" fill="#C49464" />
+      {/* Shaft-to-blade joint */}
+      <rect x="6" y="8" width="4" height="1" fill="#6B5210" />
+      {/* Blade */}
+      <rect x="5" y="9" width="6" height="2" fill="#A0A0A0" />
+      <rect x="4" y="11" width="8" height="2" fill="#C0C0C0" />
+      <rect x="5" y="13" width="6" height="2" fill="#A0A0A0" />
+      <rect x="6" y="15" width="4" height="1" fill="#808080" />
+      {/* Blade highlight */}
+      <rect x="5" y="9" width="1" height="4" fill="#D0D0D0" />
+      {/* Dirt on blade */}
+      <rect x="9" y="12" width="2" height="1" fill="#5C4033" />
+      <rect x="7" y="14" width="2" height="1" fill="#5C4033" />
+    </svg>
+  );
+}
+
+const DIGGING_MESSAGES = [
+  "DIGGING UP DATA",
+  "SNIFFING FOR DEALS",
+  "HUNTING SCAMS",
+  "CHECKING SOURCES",
+];
+
+function DiggingPlaceholder() {
+  const [msgIndex, setMsgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % DIGGING_MESSAGES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <div
+        className="flex flex-col items-center gap-6 px-10 py-8"
+        style={{
+          border: "4px solid #1A1A1A",
+          background: "rgba(42, 32, 20, 0.75)",
+          boxShadow: "4px 4px 0 #1A1A1A",
+        }}
+      >
+        {/* Animated shovel */}
+        <div style={{ animation: "shovel-dig 1.2s ease-in-out infinite" }}>
+          <PixelShovel />
+        </div>
+
+        {/* Dirt particles flying out */}
+        <div className="relative -mt-4 flex gap-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-2 w-2"
+              style={{
+                background: "#8B7355",
+                animation: `dirt-particles 0.8s ease-out infinite`,
+                animationDelay: `${i * 0.25}s`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Main message — cycles through phrases */}
+        <div className="text-center">
+          <p
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: 11,
+              color: "#FFD700",
+              textShadow: "2px 2px 0 #1A1A1A",
+              letterSpacing: 2,
+            }}
+          >
+            {DIGGING_MESSAGES[msgIndex]}...
+          </p>
+        </div>
+
+        {/* Flickering subtext */}
+        <p
+          style={{
+            fontFamily: PIXEL_FONT,
+            fontSize: 7,
+            color: "#D4C4A0",
+            animation: "retro-blink 1s steps(1) infinite",
+          }}
+        >
+          Quest in progress
+        </p>
+
+        {/* Pixel progress dots */}
+        <div className="flex gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-2 w-2"
+              style={{
+                background: "#FFD700",
+                animation: "retro-blink 1.5s steps(1) infinite",
+                animationDelay: `${i * 0.3}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BOARD PAGE
    ═══════════════════════════════════════════════════════════════ */
 
@@ -1259,7 +1384,29 @@ export default function BoardPage() {
 
           {/* ── Results section — underground dirt zone ── */}
           <div ref={resultsRef} className="dirt-underground min-h-[50vh]">
-            <ResultsContainer />
+            <div className="relative z-10">
+              <AnimatePresence mode="wait">
+                {status === "investigating" ? (
+                  <motion.div
+                    key="digging"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, y: -20, transition: { duration: 0.3 } }}
+                  >
+                    <DiggingPlaceholder />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <ResultsContainer />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>
