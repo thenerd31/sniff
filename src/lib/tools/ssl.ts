@@ -1,7 +1,6 @@
 import * as tls from "tls";
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
-import { classifyToolError } from "./error-classify";
 
 interface SSLInfo {
   issuer: string;
@@ -116,31 +115,18 @@ export async function sslAnalysis(url: string): Promise<EvidenceCard> {
   } catch (error) {
     const isNoSSL = error instanceof Error && error.message.includes("ECONNREFUSED");
 
-    if (isNoSSL) {
-      return {
-        id: uuidv4(),
-        type: "ssl",
-        severity: "critical",
-        title: "No SSL certificate found",
-        detail: `${hostname} does not support HTTPS — data sent to this site is not encrypted`,
-        source: "SSL Certificate Analysis",
-        confidence: 0.95,
-        connections: [],
-        metadata: { hostname, error: true },
-      };
-    }
-
-    const classification = classifyToolError(error);
     return {
       id: uuidv4(),
       type: "ssl",
-      severity: classification.severity,
-      title: "SSL check failed",
-      detail: `Could not analyze SSL: ${error instanceof Error ? error.message : "Unknown error"}`,
+      severity: isNoSSL ? "critical" : "warning",
+      title: isNoSSL ? "No SSL certificate found" : "SSL check failed",
+      detail: isNoSSL
+        ? `${hostname} does not support HTTPS — data sent to this site is not encrypted`
+        : `Could not analyze SSL: ${error instanceof Error ? error.message : "Unknown error"}`,
       source: "SSL Certificate Analysis",
-      confidence: 0.3,
+      confidence: isNoSSL ? 0.95 : 0.3,
       connections: [],
-      metadata: { hostname, error: true, suspicious: classification.suspicious },
+      metadata: { hostname, error: true },
     };
   }
 }

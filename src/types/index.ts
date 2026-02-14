@@ -1,3 +1,6 @@
+// src/types/index.ts
+// SHARED CONTRACT — Frontend and Backend must agree on these types.
+
 export type CardSeverity = "critical" | "warning" | "info" | "safe";
 
 export type CardType =
@@ -17,13 +20,12 @@ export interface EvidenceCard {
   id: string;
   type: CardType;
   severity: CardSeverity;
-  title: string;
-  detail: string;
-  source: string;
-  confidence: number;
-  connections: string[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  metadata: Record<string, any>;
+  title: string;        // Short: "Domain registered 6 days ago"
+  detail: string;       // Longer: "Registered Feb 7, 2026 via NameCheap in Lagos, Nigeria"
+  source: string;       // "WHOIS Lookup" | "Google Safe Browsing" | "Reddit" | etc.
+  confidence: number;   // 0.0 - 1.0
+  connections: string[]; // IDs of cards this connects to
+  metadata: Record<string, any>; // Flexible extra data
 }
 
 export interface PriceCard extends EvidenceCard {
@@ -43,12 +45,13 @@ export interface InvestigationState {
   url: string;
   cards: EvidenceCard[];
   connections: { from: string; to: string; label?: string }[];
-  threatScore: number;
-  savingsAmount?: number;
+  threatScore: number;       // 0-100
+  savingsAmount?: number;    // for price comparison mode
   status: "investigating" | "complete" | "error";
   turn: number;
 }
 
+// API Request/Response types
 export interface InvestigateRequest {
   url: string;
 }
@@ -62,6 +65,7 @@ export interface CompareRequest {
   productUrl: string;
 }
 
+// Server-Sent Event types (streamed to frontend)
 export type SSEEvent =
   | { event: "card"; data: EvidenceCard }
   | { event: "connection"; data: { from: string; to: string; label?: string } }

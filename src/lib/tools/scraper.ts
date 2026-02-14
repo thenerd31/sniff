@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
-import { classifyToolError } from "./error-classify";
 
 interface RedFlag {
   label: string;
@@ -49,18 +48,17 @@ export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
     });
 
     if (!response.ok) {
-      const isServerError = response.status >= 500;
       return [
         {
           id: uuidv4(),
           type: "alert",
-          severity: "info" as CardSeverity,
+          severity: "warning",
           title: `Site returned HTTP ${response.status}`,
           detail: `The page responded with status ${response.status} (${response.statusText})`,
           source: "Web Scraper",
-          confidence: 0.3,
+          confidence: 0.7,
           connections: [],
-          metadata: { status: response.status, suspicious: isServerError },
+          metadata: { status: response.status },
         },
       ];
     }
@@ -172,18 +170,17 @@ export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
       metadata: {},
     }));
   } catch (error) {
-    const classification = classifyToolError(error);
     return [
       {
         id: uuidv4(),
         type: "alert",
-        severity: classification.severity,
+        severity: "info",
         title: "Could not scrape page",
         detail: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
         source: "Web Scraper",
         confidence: 0,
         connections: [],
-        metadata: { error: true, suspicious: classification.suspicious },
+        metadata: { error: true },
       },
     ];
   }

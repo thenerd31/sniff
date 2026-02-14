@@ -1,6 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard, CardSeverity } from "@/types";
-import { classifyToolError } from "./error-classify";
 
 interface ApiNinjasWhois {
   domain_name?: string | string[];
@@ -97,29 +96,34 @@ export async function whoisLookup(url: string): Promise<EvidenceCard> {
       }
     }
 
+    // If no details were found, that's suspicious — not safe
+    if (details.length === 0) {
+      severity = "warning";
+      title = `No WHOIS data found for ${domain}`;
+    }
+
     return {
       id: uuidv4(),
       type: "domain",
       severity,
       title,
-      detail: details.join(" | ") || "No WHOIS details available",
+      detail: details.join(" | ") || "WHOIS records are hidden or unavailable — this can indicate the owner is concealing their identity",
       source: "WHOIS Lookup",
-      confidence: 0.9,
+      confidence: details.length > 0 ? 0.9 : 0.5,
       connections: [],
       metadata: { domain, raw: data },
     };
   } catch (error) {
-    const classification = classifyToolError(error);
     return {
       id: uuidv4(),
       type: "domain",
-      severity: classification.severity,
+      severity: "warning",
       title: `WHOIS lookup failed for ${domain}`,
       detail: `Could not retrieve WHOIS data: ${error instanceof Error ? error.message : "Unknown error"}`,
       source: "WHOIS Lookup",
       confidence: 0.3,
       connections: [],
-      metadata: { domain, error: true, suspicious: classification.suspicious },
+      metadata: { domain, error: true },
     };
   }
 }
