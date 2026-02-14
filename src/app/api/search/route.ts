@@ -47,10 +47,35 @@ export async function POST(req: NextRequest) {
       let productName: string;
 
       if (url) {
-        // URL input → scrape product name, then search for alternatives
+        // URL input → scrape the page to identify the product, then search
         send("narration", { text: "Analyzing product page..." });
+
+        // Fetch the page title + meta description to identify the product
+        let pageContext = url;
+        try {
+          const pageRes = await fetch(url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              Accept: "text/html",
+            },
+            redirect: "follow",
+            signal: AbortSignal.timeout(10000),
+          });
+          const html = await pageRes.text();
+          const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+          const ogTitle = html.match(/property=["']og:title["']\s+content=["']([^"']+)["']/i);
+          const ogDesc = html.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i);
+          const metaDesc = html.match(/name=["']description["']\s+content=["']([^"']+)["']/i);
+
+          const title = ogTitle?.[1] || titleMatch?.[1]?.trim() || "";
+          const desc = ogDesc?.[1] || metaDesc?.[1] || "";
+          pageContext = `Product: ${title}. ${desc}`.slice(0, 500);
+        } catch {
+          // If scraping fails, fall back to the URL itself
+        }
+
         const understanding = await understandQuery({
-          query: `Find alternatives to the product at: ${url}`,
+          query: `Find this product and alternatives: ${pageContext}`,
         });
         searchQueries = understanding.searchQueries;
         productName = understanding.productName;
@@ -61,7 +86,7 @@ export async function POST(req: NextRequest) {
       }
 
       send("narration", {
-        text: `Searching for "${productName}"...`,
+        text: `Searching for "${productName}"${url ? ` (from ${new URL(url).hostname})` : ""}...`,
       });
 
       // ════════════════════════════════════════════════════════════════

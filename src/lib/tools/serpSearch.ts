@@ -57,11 +57,29 @@ const RETAILER_DOMAINS: Record<string, string> = {
 function shopToDomain(shop: string): string {
   const normalized = shop.toLowerCase().trim();
 
-  // Check our known retailer map
+  // Check our known retailer map (exact match)
   if (RETAILER_DOMAINS[normalized]) return RETAILER_DOMAINS[normalized];
 
-  // If the shop name looks like a domain already (has a dot), use it
-  if (normalized.includes(".")) return normalized;
+  // Handle marketplace seller names like "Newegg.com - Quro", "Amazon.com - SellerName"
+  // Extract the domain part before the separator
+  const separatorMatch = normalized.match(/^([a-z0-9.-]+\.[a-z]{2,})\s*[-–—|]/);
+  if (separatorMatch) {
+    const baseDomain = separatorMatch[1];
+    if (RETAILER_DOMAINS[baseDomain]) return RETAILER_DOMAINS[baseDomain];
+    return baseDomain;
+  }
+
+  // Check if any known retailer name appears at the start
+  for (const [key, domain] of Object.entries(RETAILER_DOMAINS)) {
+    if (normalized.startsWith(key)) return domain;
+  }
+
+  // If the shop name looks like a domain already (has a dot), extract just the domain part
+  if (normalized.includes(".")) {
+    // Strip anything after a space/dash (e.g. "store.com - seller name" → "store.com")
+    const domainPart = normalized.split(/\s+[-–—|]/)[0].trim();
+    return domainPart;
+  }
 
   // Otherwise, construct a best-guess domain
   return normalized.replace(/[^a-z0-9]/g, "") + ".com";
@@ -183,12 +201,18 @@ async function searchGoogleShopping(
         const domain = shopToDomain(item.shop!);
         const url = shopToUrl(item.shop!, item.title!);
 
+        // Clean up retailer name: "Newegg.com - Quro" → "Newegg"
+        let retailer = item.shop!;
+        const sepIdx = retailer.search(/\s*[-–—|]\s/);
+        if (sepIdx > 0) retailer = retailer.substring(0, sepIdx).trim();
+        // Remove .com suffix for display: "nacelexpert.com" → "nacelexpert.com" (keep for unknowns)
+
         return {
           id: uuidv4(),
           title: item.title!,
           price,
           currency: "USD",
-          retailer: item.shop!,
+          retailer,
           domain,
           url,
           imageUrl: item.image_url || undefined,
