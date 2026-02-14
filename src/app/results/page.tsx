@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useResultsStore } from "@/stores/resultsStore";
+import { useResultsStore, useProductsWithVerdicts } from "@/stores/resultsStore";
 import { ResultsContainer } from "@/components/results/ResultsContainer";
 import type { SearchSSEEvent } from "@/types";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -83,7 +83,7 @@ export default function ResultsPage() {
                 case "done": {
                   const d = evt.data as { summary: string };
                   store.setDoneSummary(d.summary);
-                  store.markAllProductsReady();
+                  store.setPhase("two-columns");
                   setIsStreaming(false);
                   break;
                 }
@@ -146,7 +146,7 @@ export default function ResultsPage() {
       )}
 
       {/* Streaming narration (while loading, before results appear) */}
-      {isStreaming && store.getProductsWithVerdicts().length === 0 && !error && (
+      {isStreaming && Object.keys(store.verdicts).length === 0 && !error && (
         <div className="mx-auto max-w-2xl px-6 pt-32 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-brand" />
           <p className="mt-4 text-lg font-medium text-foreground">{narration}</p>

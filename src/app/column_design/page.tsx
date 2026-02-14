@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useResultsStore } from "@/stores/resultsStore";
 import { ResultsContainer } from "@/components/results/ResultsContainer";
 import type { ProductResult, FraudCheck, ProductVerdict } from "@/types";
 import "./results.css";
 
-// ── Mock Data ────────────────────────────────────────────────────────────
+// ── Mock Data — Simulates what the agent SSE would stream ────────────────
 
 const mockProducts: ProductResult[] = [
   {
@@ -17,7 +17,7 @@ const mockProducts: ProductResult[] = [
     retailer: "Amazon",
     domain: "amazon.com",
     url: "https://amazon.com/dp/B09XS7JWHH",
-    imageUrl: "",
+    imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg",
     rating: 4.7,
     reviewCount: 12453,
     snippet: "Industry-leading noise cancellation with Auto NC Optimizer",
@@ -30,6 +30,7 @@ const mockProducts: ProductResult[] = [
     retailer: "BestAudioDeals",
     domain: "bestaudiodeals.shop",
     url: "https://bestaudiodeals.shop/sony-xm5",
+    imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg",
     rating: 4.9,
     reviewCount: 23,
     snippet: "Unbeatable price! Limited stock available",
@@ -42,6 +43,7 @@ const mockProducts: ProductResult[] = [
     retailer: "Best Buy",
     domain: "bestbuy.com",
     url: "https://bestbuy.com/sony-wh1000xm5",
+    imageUrl: "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/6505/6505727_sd.jpg",
     rating: 4.6,
     reviewCount: 8921,
     snippet: "Free shipping, 15-day return policy",
@@ -54,6 +56,7 @@ const mockProducts: ProductResult[] = [
     retailer: "DealzKing",
     domain: "dealzking.xyz",
     url: "https://dealzking.xyz/sony-xm5-bundle",
+    imageUrl: "",
     rating: 5.0,
     reviewCount: 3,
     snippet: "Best deal online! Buy now before it's gone!",
@@ -66,6 +69,7 @@ const mockProducts: ProductResult[] = [
     retailer: "B&H Photo",
     domain: "bhphotovideo.com",
     url: "https://bhphotovideo.com/sony-xm5",
+    imageUrl: "https://m.media-amazon.com/images/I/41K5m5LHXAL._AC_SL1500_.jpg",
     rating: 4.7,
     reviewCount: 3412,
     snippet: "Authorized Sony dealer, full warranty",
@@ -78,9 +82,36 @@ const mockProducts: ProductResult[] = [
     retailer: "QuickFlipElectronics",
     domain: "quickflipelectronics.co",
     url: "https://quickflipelectronics.co/xm5",
+    imageUrl: "",
     rating: 4.2,
     reviewCount: 8,
     snippet: "Refurbished with 30-day guarantee",
+  },
+  {
+    id: "p7",
+    title: "Sony WH-1000XM5 Noise Cancelling Wireless",
+    price: 269.0,
+    currency: "USD",
+    retailer: "Walmart",
+    domain: "walmart.com",
+    url: "https://walmart.com/ip/sony-wh1000xm5",
+    imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg",
+    rating: 4.5,
+    reviewCount: 6234,
+    snippet: "Free next-day delivery on orders over $35",
+  },
+  {
+    id: "p8",
+    title: "SONY XM5 Premium Headphones - LOWEST PRICE GUARANTEED",
+    price: 99.99,
+    currency: "USD",
+    retailer: "ElectroSavvyDeals",
+    domain: "electrosavvydeals.net",
+    url: "https://electrosavvydeals.net/xm5-deal",
+    imageUrl: "",
+    rating: 4.8,
+    reviewCount: 7,
+    snippet: "We beat any price! 100% satisfaction guaranteed!",
   },
 ];
 
@@ -98,7 +129,7 @@ const mockChecks: Record<string, FraudCheck[]> = {
     { name: "Brand Impersonation", status: "failed", detail: "No business registration found. WHOIS privacy enabled.", severity: 0.88 },
   ],
   p3: [
-    { name: "Retailer Reputation", status: "passed", detail: "Best Buy is a Fortune 100 company with 1000+ stores.", severity: 0.03 },
+    { name: "Retailer Reputation", status: "passed", detail: "Best Buy is a Fortune 100 company with 1,000+ stores.", severity: 0.03 },
     { name: "Safety Database", status: "passed", detail: "Clean across all safety databases.", severity: 0.01 },
     { name: "Community Sentiment", status: "passed", detail: "Strong positive reputation in consumer electronics.", severity: 0.05 },
     { name: "Brand Impersonation", status: "passed", detail: "Publicly traded company (NYSE: BBY). Verified entity.", severity: 0.02 },
@@ -121,6 +152,18 @@ const mockChecks: Record<string, FraudCheck[]> = {
     { name: "Community Sentiment", status: "warning", detail: "One neutral Reddit mention. No established presence.", severity: 0.5 },
     { name: "Brand Impersonation", status: "warning", detail: "Small business registration found, but no physical address.", severity: 0.48 },
   ],
+  p7: [
+    { name: "Retailer Reputation", status: "passed", detail: "Walmart is the world's largest retailer with comprehensive buyer protection.", severity: 0.04 },
+    { name: "Safety Database", status: "passed", detail: "No flags across any safety databases.", severity: 0.01 },
+    { name: "Community Sentiment", status: "passed", detail: "Well-known retailer with strong consumer trust.", severity: 0.06 },
+    { name: "Brand Impersonation", status: "passed", detail: "Fortune 1 company (NYSE: WMT). Verified entity.", severity: 0.02 },
+  ],
+  p8: [
+    { name: "Retailer Reputation", status: "failed", detail: "Domain registered 8 days ago. No online presence before this week.", severity: 0.88 },
+    { name: "Safety Database", status: "failed", detail: "Flagged by PhishTank and community scam reports.", severity: 0.91 },
+    { name: "Community Sentiment", status: "failed", detail: "Reddit scam alert thread with 200+ upvotes.", severity: 0.87 },
+    { name: "Brand Impersonation", status: "failed", detail: "Fake address listed. No business registration found.", severity: 0.93 },
+  ],
 };
 
 const mockVerdicts: Record<string, { verdict: ProductVerdict; trustScore: number }> = {
@@ -130,40 +173,56 @@ const mockVerdicts: Record<string, { verdict: ProductVerdict; trustScore: number
   p4: { verdict: "danger", trustScore: 5 },
   p5: { verdict: "trusted", trustScore: 93 },
   p6: { verdict: "caution", trustScore: 52 },
+  p7: { verdict: "trusted", trustScore: 92 },
+  p8: { verdict: "danger", trustScore: 8 },
 };
 
-// ── Test Page Component ──────────────────────────────────────────────────
+// ── Seeding function (pure, no hooks) ────────────────────────────────────
+function seedStore(store: ReturnType<typeof useResultsStore.getState>) {
+  store.reset();
+
+  let delay = 0;
+  mockProducts.forEach((product) => {
+    delay += 80;
+    setTimeout(() => useResultsStore.getState().addProduct(product), delay);
+
+    const checks = mockChecks[product.id] || [];
+    checks.forEach((check) => {
+      delay += 40;
+      setTimeout(() => useResultsStore.getState().addFraudCheck(product.id, check), delay);
+    });
+
+    const verdict = mockVerdicts[product.id];
+    if (verdict) {
+      delay += 60;
+      setTimeout(
+        () => useResultsStore.getState().setVerdict(product.id, verdict.verdict, verdict.trustScore),
+        delay
+      );
+    }
+  });
+
+  setTimeout(() => {
+    useResultsStore.getState().setBestPick("p1");
+    useResultsStore.getState().setPhase("two-columns");
+  }, delay + 200);
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
 
 export default function ColumnDesignPage() {
-  const store = useResultsStore();
+  // Use useState initializer to seed exactly once (immune to React Compiler + Strict Mode)
+  const [seeded] = useState(() => {
+    // This initializer runs exactly once per component instance, even in Strict Mode
+    // Schedule seeding for next tick so it doesn't happen during render
+    if (typeof window !== "undefined") {
+      setTimeout(() => seedStore(useResultsStore.getState()), 0);
+    }
+    return true;
+  });
 
-  // Seed mock data on mount
-  useEffect(() => {
-    store.reset();
-
-    // Add products
-    mockProducts.forEach((p) => store.addProduct(p));
-
-    // Add fraud checks
-    Object.entries(mockChecks).forEach(([productId, checks]) => {
-      checks.forEach((check) => store.addFraudCheck(productId, check));
-    });
-
-    // Add verdicts
-    Object.entries(mockVerdicts).forEach(([productId, v]) => {
-      store.setVerdict(productId, v.verdict, v.trustScore);
-    });
-
-    // Set best pick
-    store.setBestPick("p1");
-
-    // Transition to two-columns after a brief delay
-    setTimeout(() => {
-      store.setPhase("two-columns");
-    }, 300);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Suppress unused variable warning
+  void seeded;
 
   return (
     <div
@@ -174,89 +233,29 @@ export default function ColumnDesignPage() {
         color: "var(--foreground)",
       }}
     >
-      {/* Header bar for test page */}
+      {/* Simulated top-half placeholder (Davyn's research UI would be here) */}
       <div
-        className="sticky top-0 z-50 backdrop-blur-md border-b px-6 py-3 flex items-center justify-between"
+        className="flex items-center justify-center border-b"
         style={{
-          background: "rgba(255,255,255,0.8)",
+          background: "linear-gradient(180deg, var(--surface) 0%, var(--background) 100%)",
           borderColor: "var(--border)",
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold" style={{ color: "var(--brand)" }}>
-            Sentinel
-          </span>
-          <span
-            className="text-xs font-mono px-2 py-0.5 rounded-full"
-            style={{
-              background: "var(--brand-light)",
-              color: "var(--brand)",
-            }}
-          >
-            column_design test
-          </span>
-        </div>
-
-        {/* Phase controls */}
-        <div className="flex items-center gap-2">
-          {(["two-columns", "wiping", "shuffling", "final-list"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => store.setPhase(p)}
-              className="px-3 py-1.5 text-xs font-medium rounded-xl transition-all"
-              style={{
-                background: store.phase === p ? "var(--brand)" : "var(--surface)",
-                color: store.phase === p ? "white" : "var(--text-muted)",
-                border: `1px solid ${store.phase === p ? "var(--brand)" : "var(--border)"}`,
-              }}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              store.reset();
-              mockProducts.forEach((p) => store.addProduct(p));
-              Object.entries(mockChecks).forEach(([id, checks]) => {
-                checks.forEach((c) => store.addFraudCheck(id, c));
-              });
-              Object.entries(mockVerdicts).forEach(([id, v]) => {
-                store.setVerdict(id, v.verdict, v.trustScore);
-              });
-              store.setBestPick("p1");
-              setTimeout(() => store.setPhase("two-columns"), 100);
-            }}
-            className="px-3 py-1.5 text-xs font-medium rounded-xl border"
-            style={{
-              background: "var(--surface-2)",
-              color: "var(--text-muted)",
-              borderColor: "var(--border)",
-            }}
-          >
-            Reset
-          </button>
-        </div>
-      </div>
-
-      {/* Simulated top-half placeholder */}
-      <div
-        className="flex items-center justify-center py-16 border-b"
-        style={{
-          background: "var(--surface)",
-          borderColor: "var(--border)",
+          height: "40vh",
         }}
       >
         <div className="text-center">
-          <p className="text-sm font-medium" style={{ color: "var(--text-subtle)" }}>
-            ↑ Davyn&apos;s Top Half (Research/Thinking UI) ↑
-          </p>
-          <p className="text-xs mt-1" style={{ color: "var(--text-subtle)" }}>
-            The bottom half slides in below after research completes
+          <h1
+            className="text-2xl font-bold mb-2"
+            style={{ color: "var(--foreground)" }}
+          >
+            Sentinel
+          </h1>
+          <p className="text-sm" style={{ color: "var(--text-subtle)" }}>
+            Research complete — scroll down to see your results
           </p>
         </div>
       </div>
 
-      {/* Bottom half — Results UI */}
+      {/* Bottom half — the seamless results flow */}
       <ResultsContainer />
     </div>
   );

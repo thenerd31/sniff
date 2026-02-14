@@ -1,6 +1,7 @@
 // src/stores/resultsStore.ts
-// Zustand store for bottom-half results UI state
+"use client";
 
+import { useMemo } from "react";
 import { create } from "zustand";
 import type {
   ProductResult,
@@ -12,14 +13,13 @@ import type {
 
 interface ResultsState {
   phase: ResultsPhase;
-  products: Map<string, ProductResult>;
-  checks: Map<string, FraudCheck[]>;
-  verdicts: Map<string, { verdict: ProductVerdict; trustScore: number }>;
+  products: Record<string, ProductResult>;
+  checks: Record<string, FraudCheck[]>;
+  verdicts: Record<string, { verdict: ProductVerdict; trustScore: number }>;
   bestPickId: string | null;
   savedItems: string[];
   doneSummary: string | null;
 
-  // Actions
   addProduct: (product: ProductResult) => void;
   addFraudCheck: (productId: string, check: FraudCheck) => void;
   setVerdict: (productId: string, verdict: ProductVerdict, trustScore: number) => void;
@@ -27,17 +27,9 @@ interface ResultsState {
   setPhase: (phase: ResultsPhase) => void;
   setDoneSummary: (summary: string) => void;
   toggleSave: (productId: string) => void;
-  markAllProductsReady: () => void;
   reset: () => void;
-
-  // Computed helpers
-  getProductsWithVerdicts: () => ProductWithVerdict[];
-  getTrusted: () => ProductWithVerdict[];
-  getFlagged: () => ProductWithVerdict[];
-  getSortedTrusted: () => ProductWithVerdict[];
 }
 
-// Load saved items from localStorage
 const loadSavedItems = (): string[] => {
   if (typeof window === "undefined") return [];
   try {
@@ -48,51 +40,45 @@ const loadSavedItems = (): string[] => {
   }
 };
 
-// Persist saved items to localStorage
 const persistSavedItems = (items: string[]) => {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem("sentinel-saved-items", JSON.stringify(items));
-  } catch {
-    // silently fail
-  }
+  } catch {}
 };
 
-export const useResultsStore = create<ResultsState>((set, get) => ({
+export const useResultsStore = create<ResultsState>((set) => ({
   phase: "hidden",
-  products: new Map(),
-  checks: new Map(),
-  verdicts: new Map(),
+  products: {},
+  checks: {},
+  verdicts: {},
   bestPickId: null,
   savedItems: loadSavedItems(),
   doneSummary: null,
 
   addProduct: (product) =>
-    set((state) => {
-      const next = new Map(state.products);
-      next.set(product.id, product);
-      return { products: next };
-    }),
+    set((state) => ({
+      products: { ...state.products, [product.id]: product },
+    })),
 
   addFraudCheck: (productId, check) =>
-    set((state) => {
-      const next = new Map(state.checks);
-      const existing = next.get(productId) || [];
-      next.set(productId, [...existing, check]);
-      return { checks: next };
-    }),
+    set((state) => ({
+      checks: {
+        ...state.checks,
+        [productId]: [...(state.checks[productId] || []), check],
+      },
+    })),
 
   setVerdict: (productId, verdict, trustScore) =>
-    set((state) => {
-      const next = new Map(state.verdicts);
-      next.set(productId, { verdict, trustScore });
-      return { verdicts: next };
-    }),
+    set((state) => ({
+      verdicts: {
+        ...state.verdicts,
+        [productId]: { verdict, trustScore },
+      },
+    })),
 
   setBestPick: (productId) => set({ bestPickId: productId }),
-
   setPhase: (phase) => set({ phase }),
-
   setDoneSummary: (summary) => set({ doneSummary: summary }),
 
   toggleSave: (productId) =>
@@ -104,60 +90,55 @@ export const useResultsStore = create<ResultsState>((set, get) => ({
       return { savedItems: next };
     }),
 
-  markAllProductsReady: () => {
-    const state = get();
-    // Only transition to two-columns if we have verdicts
-    if (state.verdicts.size > 0 && state.phase === "hidden") {
-      set({ phase: "two-columns" });
-    }
-  },
-
   reset: () =>
     set({
       phase: "hidden",
-      products: new Map(),
-      checks: new Map(),
-      verdicts: new Map(),
+      products: {},
+      checks: {},
+      verdicts: {},
       bestPickId: null,
       doneSummary: null,
     }),
+}));
 
-  // Computed: merge products + checks + verdicts
-  getProductsWithVerdicts: () => {
-    const { products, checks, verdicts } = get();
+// ── Memoized derived selectors ───────────────────────────────────────────
+
+export function useProductsWithVerdicts(): ProductWithVerdict[] {
+  const products = useResultsStore((s) => s.products);
+  const checks = useResultsStore((s) => s.checks);
+  const verdicts = useResultsStore((s) => s.verdicts);
+
+  return useMemo(() => {
     const result: ProductWithVerdict[] = [];
-    products.forEach((product, id) => {
-      const v = verdicts.get(id);
+    for (const id in products) {
+      const v = verdicts[id];
       if (v) {
         result.push({
-          ...product,
-          checks: checks.get(id) || [],
+          ...products[id],
+          checks: checks[id] || [],
           verdict: v.verdict,
           trustScore: v.trustScore,
         });
       }
-    });
+    }
     return result;
-  },
+  }, [products, checks, verdicts]);
+}
 
-  // Trusted: score >= 75 OR verdict === "trusted" OR verdict === "caution"
-  getTrusted: () => {
-    return get()
-      .getProductsWithVerdicts()
-      .filter((p) => p.verdict === "trusted" || p.verdict === "caution");
-  },
+export function useTrusted(): ProductWithVerdict[] {
+  const all = useProductsWithVerdicts();
+  return useMemo(
+    () => all.filter((p) => p.verdict === "trusted" || p.verdict === "caution"),
+    [all]
+  );
+}
 
-  // Flagged: verdict === "danger"
-  getFlagged: () => {
-    return get()
-      .getProductsWithVerdicts()
-      .filter((p) => p.verdict === "danger");
-  },
+export function useFlagged(): ProductWithVerdict[] {
+  const all = useProductsWithVerdicts();
+  return useMemo(() => all.filter((p) => p.verdict === "danger"), [all]);
+}
 
-  // Sorted by price ascending
-  getSortedTrusted: () => {
-    return get()
-      .getTrusted()
-      .sort((a, b) => a.price - b.price);
-  },
-}));
+export function useSortedTrusted(): ProductWithVerdict[] {
+  const trusted = useTrusted();
+  return useMemo(() => [...trusted].sort((a, b) => a.price - b.price), [trusted]);
+}

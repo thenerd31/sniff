@@ -40,7 +40,7 @@ export function useResultsStream() {
           break;
         case "done":
           store.setDoneSummary(event.data.summary);
-          store.markAllProductsReady();
+          store.setPhase("two-columns");
           break;
         case "all_products":
           // All products sent, verdicts may still be streaming

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { CardFront } from "./CardFront";
 import { CardBack } from "./CardBack";
@@ -24,6 +24,11 @@ export function FlipCard({
   className = "",
 }: FlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  // When the cursor moves into the action button area, unflip so buttons stay clickable
+  const handleActionAreaEnter = useCallback(() => {
+    setIsFlipped(false);
+  }, []);
 
   return (
     <div
@@ -49,6 +54,7 @@ export function FlipCard({
             isTopPick={isTopPick}
             isSaved={isSaved}
             onToggleSave={onToggleSave}
+            onActionAreaEnter={handleActionAreaEnter}
           />
         </div>
 
