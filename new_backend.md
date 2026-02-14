@@ -57,7 +57,7 @@ How Sentinel's Backend Works                          
   ├─────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────────┤
   │ Google Safe Browsing    │ Known malware/phishing database                   │ "Not flagged" or "MALWARE detected" │
   ├─────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────────┤
-  │ Brand Impersonation     │ Typosquatting, lookalike domains (GPT-4o-mini)    │ "Likely impersonating Nike"         │
+  │ Brand Impersonation     │ Typosquatting, lookalike domains (gpt-5-mini)    │ "Likely impersonating Nike"         │
   ├─────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────────┤
   │ Reddit Search           │ Scam reports in r/Scams, r/IsItAScam              │ "12 scam reports, 847 upvotes"      │
   ├─────────────────────────┼───────────────────────────────────────────────────┼─────────────────────────────────────┤
@@ -90,9 +90,9 @@ How Sentinel's Backend Works                          
 
   First matching tier wins. Higher tiers override everything.
 
-  Phase 3 — Agent Synthesis (GPT-4o)
+  Phase 3 — Agent Synthesis (gpt-5)
 
-  Feeds all evidence cards to GPT-4o, which returns:
+  Feeds all evidence cards to gpt-5, which returns:
   - Connections — "WHOIS → Reddit reports: corroborating fraud evidence"
   - Insight cards — "This matches a known dropshipping scam pattern"
   - Product name — if the site is selling something identifiable
@@ -143,13 +143,13 @@ How Sentinel's Backend Works                          
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
   │ Web scraping (structured) │ Bright Data dataset API (Amazon, Walmart, Best Buy, eBay) │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
-  │ Web scraping (any site)   │ Browserbase + Stagehand AI browser (GPT-4o-mini)          │
+  │ Web scraping (any site)   │ Browserbase + Stagehand AI browser (gpt-5-mini)          │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
   │ Web search                │ Perplexity Sonar Pro                                      │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
-  │ Agent synthesis           │ OpenAI GPT-4o (Responses API)                             │
+  │ Agent synthesis           │ OpenAI gpt-5 (Responses API)                             │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
-  │ Brand detection           │ OpenAI GPT-4o-mini                                        │
+  │ Brand detection           │ OpenAI gpt-5-mini                                        │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤
   │ Threat database           │ Google Safe Browsing API                                  │
   ├───────────────────────────┼───────────────────────────────────────────────────────────┤

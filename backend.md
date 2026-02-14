@@ -143,7 +143,7 @@ interface EvidenceCard {
 ## Env Vars Required
 
 ```
-OPENAI_API_KEY=          # Agent orchestration (gpt-4o)
+OPENAI_API_KEY=          # Agent orchestration (gpt-5)
 GOOGLE_SAFE_BROWSING_KEY=  # Google Safe Browsing v4
 API_NINJAS_KEY=            # WHOIS lookups
 PERPLEXITY_API_KEY=        # Price search via Sonar

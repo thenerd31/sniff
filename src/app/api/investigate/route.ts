@@ -303,7 +303,7 @@ export async function POST(req: NextRequest) {
       let productName: string | null = null;
 
       const synthesisResult = await openai.responses.create({
-        model: "gpt-4o",
+        model: "gpt-5-mini",
         instructions: SYNTHESIS_PROMPT,
         input: `URL investigated: ${url} (domain: ${domain})\nFinal threat score: ${finalScore}/100\n\nEvidence cards from automated scan:\n${cardSummary}`,
       });

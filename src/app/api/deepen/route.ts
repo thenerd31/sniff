@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       const synthesisPrompt = buildSynthesisPrompt(focus, existing);
 
       const synthesisResult = await openai.responses.create({
-        model: "gpt-4o",
+        model: "gpt-5-mini",
         instructions: synthesisPrompt,
         input: `New evidence from "${focus}" investigation:\n${newCardSummary}`,
       });

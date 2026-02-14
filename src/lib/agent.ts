@@ -132,7 +132,7 @@ async function runAgent(
 
   try {
     const response = await getOpenAI().responses.create({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       instructions: systemPrompt,
       input: userMessage,
       tools: toolDefinitions,
@@ -208,7 +208,7 @@ async function runAgent(
 
       // Send tool results back for final analysis
       const followUp = await getOpenAI().responses.create({
-        model: "gpt-4o",
+        model: "gpt-5-mini",
         instructions: systemPrompt,
         input: [
           { role: "user", content: userMessage },

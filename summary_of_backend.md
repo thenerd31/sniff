@@ -58,7 +58,7 @@ User pastes URL
 | WHOIS Lookup | Domain age, registrar, country | "Registered 6 days ago in Nigeria" |
 | SSL Analysis | Certificate validity, issuer, mismatch | "Self-signed cert / Let's Encrypt" |
 | Google Safe Browsing | Known malware/phishing database | "Not flagged" or "MALWARE detected" |
-| Brand Impersonation | Typosquatting, lookalike domains (GPT-4o-mini) | "Likely impersonating Nike" |
+| Brand Impersonation | Typosquatting, lookalike domains (gpt-5-mini) | "Likely impersonating Nike" |
 | Reddit Search | Scam reports in r/Scams, r/IsItAScam | "12 scam reports, 847 upvotes" |
 | Page Scanner | Urgency tactics, missing policies, fake discounts | "No return policy, countdown timer" |
 | ScamAdviser | Trust score, risk category | "Trust score: 12/100" |
@@ -80,9 +80,9 @@ After all tools finish, `computeFinalThreatScore()` applies a tiered hierarchy:
 
 First matching tier wins. Higher tiers override everything.
 
-### Phase 3 -- Agent Synthesis (GPT-4o)
+### Phase 3 -- Agent Synthesis (gpt-5)
 
-Feeds all evidence cards to GPT-4o, which returns:
+Feeds all evidence cards to gpt-5, which returns:
 - **Connections** -- "WHOIS -> Reddit reports: corroborating fraud evidence"
 - **Insight cards** -- "This matches a known dropshipping scam pattern"
 - **Product name** -- if the site is selling something identifiable
@@ -131,10 +131,10 @@ Frontend consumes via `useInvestigation()` hook -> `state.cards`, `state.connect
 | Layer | Technology |
 |---|---|
 | Web scraping (structured) | Bright Data dataset API (Amazon, Walmart, Best Buy, eBay) |
-| Web scraping (any site) | Browserbase + Stagehand AI browser (GPT-4o-mini) |
+| Web scraping (any site) | Browserbase + Stagehand AI browser (gpt-5-mini) |
 | Web search | Perplexity Sonar Pro |
-| Agent synthesis | OpenAI GPT-4o (Responses API) |
-| Brand detection | OpenAI GPT-4o-mini |
+| Agent synthesis | OpenAI gpt-5 (Responses API) |
+| Brand detection | OpenAI gpt-5-mini |
 | Threat database | Google Safe Browsing API |
 | Reputation | ScamAdviser API, Reddit API |
 | Domain intel | WHOIS (API Ninjas) |

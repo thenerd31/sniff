@@ -65,6 +65,21 @@ export interface CompareRequest {
   productUrl: string;
 }
 
+/** Raw product result from Google Shopping (serpSearch.ts). */
+export interface ProductResult {
+  id: string;
+  title: string;
+  price: number;          // USD number, 0 if unavailable
+  currency: string;
+  retailer: string;       // "Amazon", "Walmart", etc.
+  domain: string;         // "amazon.com"
+  url: string;
+  imageUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  snippet?: string;       // shipping tag, promo label, etc.
+}
+
 export interface ShoppingRequest {
   /** Free-text search query or product description (optional). */
   text?: string;
