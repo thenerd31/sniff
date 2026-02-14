@@ -10,6 +10,7 @@ interface CardFrontProps {
   isTopPick?: boolean;
   isSaved?: boolean;
   onToggleSave?: () => void;
+  onActionAreaEnter?: () => void;
 }
 
 export function CardFront({
@@ -18,6 +19,7 @@ export function CardFront({
   isTopPick = false,
   isSaved = false,
   onToggleSave,
+  onActionAreaEnter,
 }: CardFrontProps) {
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -97,8 +99,8 @@ export function CardFront({
         )}
       </div>
 
-      {/* Bottom section */}
-      <div>
+      {/* Bottom section — hovering here unflips the card so buttons stay clickable */}
+      <div onMouseEnter={showActions ? onActionAreaEnter : undefined}>
         {/* Price */}
         <p className="text-2xl font-bold mb-3" style={{ color: "var(--brand)" }}>
           {formattedPrice}
