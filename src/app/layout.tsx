@@ -20,7 +20,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Sentinel — Your Personal Shopping Assistant",
+  title: "Sniff — Your Personal Shopping Assistant",
   description:
     "Find the best deals, uncover hidden markups, and save money on every purchase with AI-powered price discovery.",
 };
