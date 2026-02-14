@@ -8,9 +8,14 @@ import type { ProductResult } from "@/types";
 
 interface BrightDataShoppingItem {
   title?: string;
-  price?: string;       // "$249.99" format
+  price?: string;        // "$249.99" format
   old_price?: string;
   shop?: string;         // "Amazon", "Walmart", "nacelexpert.com"
+  // Product URL — Bright Data may use any of these field names
+  link?: string;
+  url?: string;
+  product_link?: string;
+  merchant_link?: string;
   rating?: number;
   reviews_cnt?: number;
   shipping?: string;
@@ -80,8 +85,9 @@ function shopToUrl(shop: string, productTitle: string): string {
   if (domain === "costco.com") return `https://www.costco.com/CatalogSearch?keyword=${title}`;
   if (domain === "newegg.com") return `https://www.newegg.com/p/pl?d=${title}`;
 
-  // For unknown retailers, link to Google Shopping filtered by site
-  return `https://www.google.com/search?q=${title}+site:${domain}&tbm=shop`;
+  // For unknown retailers, use the domain root so fraud checks hit the real site
+  // (Google Shopping wrapper URL breaks Safe Browsing / Reddit / seller-check)
+  return `https://${domain}`;
 }
 
 /**
@@ -176,12 +182,19 @@ async function searchGoogleShopping(
       return [];
     }
 
+    // One-time debug: show available fields on the first item
+    if (items[0]) {
+      console.debug("serpSearch: first item keys:", Object.keys(items[0]));
+    }
+
     return items
       .filter((item) => item.title && item.price && item.shop)
       .map((item) => {
         const price = parsePrice(item.price!);
         const domain = shopToDomain(item.shop!);
-        const url = shopToUrl(item.shop!, item.title!);
+        // Use real product URL from SERP if available; fall back to domain root
+        const rawUrl = item.link || item.url || item.product_link || item.merchant_link;
+        const url = rawUrl || shopToUrl(item.shop!, item.title!);
 
         return {
           id: uuidv4(),

@@ -100,20 +100,6 @@ export type SSEEvent =
 
 // ── Shopping Agent Types ─────────────────────────────────────────────────
 
-export interface ProductResult {
-  id: string;
-  title: string;
-  price: number;
-  currency: string;
-  retailer: string;
-  domain: string;
-  url: string;
-  imageUrl?: string;
-  rating?: number;
-  reviewCount?: number;
-  snippet?: string;
-}
-
 export type FraudCheckName =
   | "Retailer Reputation"
   | "Safety Database"

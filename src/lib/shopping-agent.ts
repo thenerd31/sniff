@@ -1,14 +1,19 @@
 // src/lib/shopping-agent.ts
 // Multimodal shopping agent — accepts text and/or an image, identifies the
-// product using gpt-5-mini vision, then searches Google Shopping via
-// Bright Data SERP (with Perplexity fallback) from serpSearch.ts.
+// product using gpt-5-mini vision, searches Google Shopping via Bright Data
+// SERP, then validates each result for fraud before streaming results.
 
 import OpenAI from "openai";
-import { v4 as uuidv4 } from "uuid";
 import { searchProducts } from "./tools/serpSearch";
-import type { EvidenceCard, ProductResult } from "@/types";
+import {
+  validateProduct,
+  computeVerdict,
+  computeMedianPrice,
+} from "./tools/validate-product";
+import type { ProductResult } from "@/types";
 
-const openai = new OpenAI();
+let _openai: OpenAI | null = null;
+const getOpenAI = () => (_openai ??= new OpenAI());
 
 const VISION_MODEL = "gpt-5-mini";
 
@@ -29,47 +34,27 @@ interface SSEWriter {
   close: () => void;
 }
 
-// ── Convert ProductResult → EvidenceCard ────────────────────────────────────
-
-function toCard(p: ProductResult): EvidenceCard {
-  const parts: string[] = [];
-  if (p.price > 0) parts.push(`$${p.price.toFixed(2)}`);
-  if (p.snippet) parts.push(p.snippet);
-  if (p.rating) parts.push(`${p.rating}★ (${p.reviewCount ?? 0} reviews)`);
-
-  return {
-    id: p.id ?? uuidv4(),
-    type: "price",
-    severity: "info",
-    title: p.title,
-    detail: [p.retailer, ...parts].filter(Boolean).join(" · "),
-    source: "Google Shopping (Bright Data)",
-    confidence: 0.9,
-    connections: [],
-    metadata: {
-      retailer: p.retailer,
-      price: p.price,
-      currency: p.currency,
-      url: p.url,
-      inStock: true,
-      imageUrl: p.imageUrl ?? null,
-      rating: p.rating ?? null,
-      reviews: p.reviewCount ?? null,
-      snippet: p.snippet ?? null,
-    },
-  };
-}
-
 // ── Main agent ───────────────────────────────────────────────────────────────
 
 /**
  * runShoppingAgent
  *
- * 1. If an image is supplied, call gpt-5-mini with vision to extract a
- *    concise product search query.
- * 2. Merge vision output + user text into a final query.
- * 3. Call searchProducts() from serpSearch.ts (Bright Data → Perplexity).
- * 4. Stream each result as a `price` EvidenceCard via SSE.
+ * 1. Optional vision step: gpt-5-mini extracts a product search query from image.
+ * 2. searchProducts() via Bright Data SERP (Perplexity fallback).
+ * 3. Stream `product` events for every result immediately.
+ * 4. Run 4 fraud checks per product in parallel, stream `fraud_check` + `verdict`.
+ * 5. Pick best trusted product, stream `best_pick`.
+ * 6. Stream `done` with summary stats.
+ *
+ * SSE events emitted (SearchSSEEvent):
+ *   narration       — progress text
+ *   all_products    — { count } — total found before validation
+ *   product         — ProductResult
+ *   fraud_check     — { productId, check: FraudCheck }
+ *   verdict         — { productId, verdict, trustScore }
+ *   best_pick       — { productId, savings? }
+ *   done            — { summary, totalProducts, trustedCount, flaggedCount }
+ *   error           — { message }
  */
 export async function runShoppingAgent(
   input: ShoppingAgentInput,
@@ -84,7 +69,7 @@ export async function runShoppingAgent(
     const mediaType = imageMediaType ?? "image/jpeg";
     const dataUrl = `data:${mediaType};base64,${imageBase64}`;
 
-    const visionResp = await openai.chat.completions.create({
+    const visionResp = await getOpenAI().chat.completions.create({
       model: VISION_MODEL,
       max_tokens: 256,
       messages: [
@@ -114,7 +99,7 @@ export async function runShoppingAgent(
     visionQuery = visionResp.choices[0]?.message.content?.trim() ?? null;
 
     if (visionQuery) {
-      writer.send("narration", { text: `Vision: "${visionQuery}"` });
+      writer.send("narration", { text: `Identified: "${visionQuery}"` });
     }
   }
 
@@ -146,23 +131,95 @@ export async function runShoppingAgent(
 
   if (results.length === 0) {
     writer.send("narration", { text: "No shopping results found." });
-    writer.send("done", { summary: "No results found." });
+    writer.send("done", {
+      summary: "No results found.",
+      totalProducts: 0,
+      trustedCount: 0,
+      flaggedCount: 0,
+    });
     writer.close();
     return;
   }
 
-  // ── Step 4: Stream cards ─────────────────────────────────────────────────
-  for (const result of results) {
-    writer.send("card", toCard(result));
+  // ── Step 4: Stream all products immediately ───────────────────────────────
+  writer.send("all_products", { count: results.length });
+  for (const product of results) {
+    writer.send("product", product);
   }
 
-  const priced = results.filter((r) => r.price > 0);
-  const best = priced.sort((a, b) => a.price - b.price)[0];
+  writer.send("narration", {
+    text: `Found ${results.length} listings. Running fraud checks...`,
+  });
 
-  const summary = best
-    ? `Found ${results.length} results. Best price: ${best.retailer} at $${best.price.toFixed(2)}`
-    : `Found ${results.length} results.`;
+  // ── Step 5: Validate each product in parallel ─────────────────────────────
+  const referencePrice = computeMedianPrice(results);
 
-  writer.send("done", { summary });
+  type ValidatedProduct = {
+    product: ProductResult;
+    verdict: "trusted" | "caution" | "danger";
+    trustScore: number;
+  };
+
+  const validated: ValidatedProduct[] = await Promise.all(
+    results.map(async (product) => {
+      const checks = await validateProduct(product, referencePrice);
+
+      // Stream each individual check as it arrives
+      for (const check of checks) {
+        writer.send("fraud_check", { productId: product.id, check });
+      }
+
+      const { verdict, trustScore } = computeVerdict(checks);
+      writer.send("verdict", { productId: product.id, verdict, trustScore });
+
+      return { product, verdict, trustScore };
+    })
+  );
+
+  // ── Step 6: Pick best trusted result ─────────────────────────────────────
+  const trusted = validated.filter((v) => v.verdict === "trusted");
+  const caution = validated.filter((v) => v.verdict === "caution");
+  const danger  = validated.filter((v) => v.verdict === "danger");
+
+  // Best pick = cheapest trusted product; fall back to cheapest caution
+  const candidates = trusted.length > 0 ? trusted : caution;
+  const bestPick = candidates
+    .filter((v) => v.product.price > 0)
+    .sort((a, b) => a.product.price - b.product.price)[0];
+
+  if (bestPick) {
+    const savings =
+      referencePrice > 0 && bestPick.product.price < referencePrice
+        ? referencePrice - bestPick.product.price
+        : undefined;
+    writer.send("best_pick", {
+      productId: bestPick.product.id,
+      savings:
+        savings !== undefined ? parseFloat(savings.toFixed(2)) : undefined,
+    });
+  }
+
+  // ── Step 7: Done ─────────────────────────────────────────────────────────
+  const trustedCount = trusted.length;
+  const flaggedCount = danger.length;
+
+  const summaryParts: string[] = [
+    `${results.length} listings found`,
+    `${trustedCount} trusted`,
+  ];
+  if (flaggedCount > 0)
+    summaryParts.push(`${flaggedCount} flagged as dangerous`);
+  if (bestPick) {
+    summaryParts.push(
+      `best pick: ${bestPick.product.retailer} at $${bestPick.product.price.toFixed(2)}`
+    );
+  }
+
+  writer.send("done", {
+    summary: summaryParts.join(", "),
+    totalProducts: results.length,
+    trustedCount,
+    flaggedCount,
+  });
   writer.close();
 }

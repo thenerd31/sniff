@@ -10,8 +10,8 @@ interface QueryUnderstanding {
 
 /**
  * Phase 1: Understand the user's shopping intent.
- * - Text input → GPT-4o converts vague descriptions into search queries
- * - Image input → GPT-4o Vision identifies the product, then generates queries
+ * - Text input → gpt-5 converts vague descriptions into search queries
+ * - Image input → gpt-5 Vision identifies the product, then generates queries
  */
 export async function understandQuery(input: {
   query?: string;
@@ -20,7 +20,7 @@ export async function understandQuery(input: {
   // ── Image input: identify product first ───────────────────────────────
   if (input.image) {
     const visionResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "system",
@@ -43,7 +43,7 @@ export async function understandQuery(input: {
         },
       ],
       response_format: { type: "json_object" },
-      temperature: 0,
+      temperature: 1,
     });
 
     const content = visionResponse.choices[0]?.message?.content;
@@ -66,7 +66,7 @@ export async function understandQuery(input: {
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: "gpt-5-mini",
     messages: [
       {
         role: "system",
@@ -92,7 +92,7 @@ Rules:
       },
     ],
     response_format: { type: "json_object" },
-    temperature: 0,
+    temperature: 1,
   });
 
   const content = response.choices[0]?.message?.content;
