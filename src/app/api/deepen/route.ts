@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
 import { createSSEResponse } from "@/lib/stream";
 import OpenAI from "openai";
-import { v4 as uuid } from "uuid";
-import { EvidenceCard } from "@/types";
-
-// Tool implementations — Yifan builds these
 import { whoisLookup } from "@/lib/tools/whois";
-import { checkSafeBrowsing } from "@/lib/tools/safeBrowsing";
-import { checkSSL } from "@/lib/tools/sslCheck";
-import { searchReddit } from "@/lib/tools/redditSearch";
+import { safeBrowsingCheck } from "@/lib/tools/safe-browsing";
+import { sslAnalysis } from "@/lib/tools/ssl";
+import { redditSearch } from "@/lib/tools/reddit";
+import { scrapeForRedFlags } from "@/lib/tools/scraper";
+import { scamadviserCheck } from "@/lib/tools/scamadviser";
+import { priceSearch } from "@/lib/tools/priceSearch";
+import type { EvidenceCard } from "@/types";
 
 const openai = new OpenAI();
 
@@ -49,160 +49,117 @@ const FOCUS_PROMPTS: Record<string, string> = {
 - Emit 3-5 NEW evidence cards about pricing legitimacy`,
 };
 
-// ── System Prompt ──────────────────────────────────────────────────────
-function buildDeepenPrompt(
-  focus: string,
-  existingCards: EvidenceCard[]
-): string {
+function buildDeepenPrompt(focus: string, existingCards: EvidenceCard[]): string {
   const existingSummary = existingCards
-    .map((c) => `- [${c.severity.toUpperCase()}] ${c.title}: ${c.detail}`)
+    .map((c) => `- [${c.severity.toUpperCase()}] ${c.title}: ${c.detail} (cardId: ${c.id})`)
     .join("\n");
 
   const existingIds = existingCards.map((c) => c.id).join(", ");
-
-  const focusInstructions =
-    FOCUS_PROMPTS[focus] || `Investigate further in the area of: ${focus}`;
+  const focusInstructions = FOCUS_PROMPTS[focus] || `Investigate further in the area of: ${focus}`;
 
   return `You are Sentinel, continuing an existing fraud investigation. The user wants to dig deeper.
 
 EXISTING EVIDENCE (already on the board):
 ${existingSummary}
 
-EXISTING CARD IDS (for connecting new cards): ${existingIds}
+EXISTING CARD IDS (use these in connectTo to link new cards to old ones): ${existingIds}
 
 ${focusInstructions}
 
 RULES:
 - Emit ONLY NEW findings. Do NOT repeat existing evidence.
 - Connect new cards to existing ones where relevant using connectTo.
-- Update the threat score based on all evidence (old + new).
+- Update the threat score based on ALL evidence (old + new).
 - Be specific with dates, numbers, sources.`;
 }
 
-// ── Same tools as investigate route ────────────────────────────────────
-const tools: OpenAI.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "whois_lookup",
-      description: "Look up domain registration information",
-      parameters: {
-        type: "object",
-        properties: { domain: { type: "string" } },
-        required: ["domain"],
-      },
+// ── Tool Definition Helper ──────────────────────────────────────────────
+function defineTool(name: string, description: string, parameters?: Record<string, unknown>): OpenAI.Responses.Tool {
+  return {
+    type: "function" as const,
+    name,
+    description,
+    strict: false as const,
+    parameters: parameters || {
+      type: "object" as const,
+      properties: { url: { type: "string" as const } },
+      required: ["url"] as const,
+      additionalProperties: false as const,
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "safe_browsing_check",
-      description: "Check URL against Google Safe Browsing database",
-      parameters: {
-        type: "object",
-        properties: { url: { type: "string" } },
-        required: ["url"],
-      },
+  };
+}
+
+// ── Tool Definitions ───────────────────────────────────────────────────
+const tools: OpenAI.Responses.Tool[] = [
+  defineTool("whois_lookup", "WHOIS lookup on the domain."),
+  defineTool("ssl_analysis", "Analyze SSL/TLS certificate."),
+  defineTool("safe_browsing_check", "Check against Google Safe Browsing."),
+  defineTool("scrape_red_flags", "Scrape webpage for scam red flags."),
+  defineTool("reddit_search", "Search Reddit for reports about this domain."),
+  defineTool("scamadviser_check", "Query ScamAdviser for trust score."),
+  defineTool("price_search", "Search for product prices across legitimate retailers."),
+  defineTool("emit_evidence_card", "Pin an evidence card to the board.", {
+    type: "object" as const,
+    properties: {
+      type: { type: "string" as const, enum: ["domain", "ssl", "scam_report", "review_analysis", "price", "seller", "business", "alert", "email", "alternative"] },
+      severity: { type: "string" as const, enum: ["critical", "warning", "info", "safe"] },
+      title: { type: "string" as const },
+      detail: { type: "string" as const },
+      source: { type: "string" as const },
+      confidence: { type: "number" as const },
+      connectTo: { type: "array" as const, items: { type: "string" as const } },
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "ssl_check",
-      description: "Analyze SSL/TLS certificate of a domain",
-      parameters: {
-        type: "object",
-        properties: { domain: { type: "string" } },
-        required: ["domain"],
-      },
+    required: ["type", "severity", "title", "detail", "source", "confidence"] as const,
+    additionalProperties: false as const,
+  }),
+  defineTool("set_threat_score", "Update the overall threat score (0-100).", {
+    type: "object" as const,
+    properties: {
+      score: { type: "number" as const },
+      reasoning: { type: "string" as const },
     },
-  },
-  {
-    type: "function",
-    function: {
-      name: "reddit_search",
-      description: "Search Reddit for scam reports or discussions",
-      parameters: {
-        type: "object",
-        properties: { query: { type: "string" } },
-        required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "emit_evidence_card",
-      description: "Add an evidence card to the investigation board",
-      parameters: {
-        type: "object",
-        properties: {
-          type: {
-            type: "string",
-            enum: ["domain", "ssl", "scam_report", "review_analysis", "price", "seller", "business", "alert", "email", "alternative"],
-          },
-          severity: { type: "string", enum: ["critical", "warning", "info", "safe"] },
-          title: { type: "string" },
-          detail: { type: "string" },
-          source: { type: "string" },
-          confidence: { type: "number" },
-          connectTo: { type: "array", items: { type: "string" } },
-        },
-        required: ["type", "severity", "title", "detail", "source", "confidence"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "set_threat_score",
-      description: "Update the overall threat score (0-100)",
-      parameters: {
-        type: "object",
-        properties: {
-          score: { type: "number" },
-          reasoning: { type: "string" },
-        },
-        required: ["score"],
-      },
-    },
-  },
+    required: ["score", "reasoning"] as const,
+    additionalProperties: false as const,
+  }),
 ];
 
 // ── Tool Executor ──────────────────────────────────────────────────────
 async function executeTool(
   name: string,
-  args: Record<string, unknown>,
+  args: Record<string, string>,
   send: (event: string, data: unknown) => void,
   cardIds: string[]
 ): Promise<string> {
   switch (name) {
     case "whois_lookup":
-      return JSON.stringify(await whoisLookup(args.domain as string));
-
+      return JSON.stringify(await whoisLookup(args.url));
+    case "ssl_analysis":
+      return JSON.stringify(await sslAnalysis(args.url));
     case "safe_browsing_check":
-      return JSON.stringify(await checkSafeBrowsing(args.url as string));
-
-    case "ssl_check":
-      return JSON.stringify(await checkSSL(args.domain as string));
-
+      return JSON.stringify(await safeBrowsingCheck(args.url));
+    case "scrape_red_flags":
+      return JSON.stringify(await scrapeForRedFlags(args.url));
     case "reddit_search":
-      return JSON.stringify(await searchReddit(args.query as string));
-
+      return JSON.stringify(await redditSearch(args.url));
+    case "scamadviser_check":
+      return JSON.stringify(await scamadviserCheck(args.url));
+    case "price_search":
+      return JSON.stringify(await priceSearch(args.url));
     case "emit_evidence_card": {
-      const id = uuid();
+      const id = `card-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       cardIds.push(id);
-      send("card", {
+      const card: EvidenceCard = {
         id,
-        type: args.type,
-        severity: args.severity,
+        type: args.type as EvidenceCard["type"],
+        severity: args.severity as EvidenceCard["severity"],
         title: args.title,
         detail: args.detail,
         source: args.source,
-        confidence: args.confidence,
-        connections: args.connectTo || [],
+        confidence: parseFloat(args.confidence) || 0.5,
+        connections: (Array.isArray(args.connectTo) ? args.connectTo : []) as string[],
         metadata: {},
-      });
+      };
+      send("card", card);
       if (Array.isArray(args.connectTo)) {
         for (const targetId of args.connectTo) {
           send("connection", { from: id, to: targetId });
@@ -210,12 +167,10 @@ async function executeTool(
       }
       return JSON.stringify({ success: true, cardId: id });
     }
-
     case "set_threat_score": {
-      send("threat_score", { score: args.score });
+      send("threat_score", { score: parseFloat(args.score) || 0 });
       return JSON.stringify({ success: true });
     }
-
     default:
       return JSON.stringify({ error: `Unknown tool: ${name}` });
   }
@@ -229,55 +184,75 @@ export async function POST(req: NextRequest) {
   (async () => {
     try {
       const domain = new URL(url).hostname;
-      const cardIds: string[] = (existingCards || []).map(
-        (c: EvidenceCard) => c.id
-      );
+      const cardIds: string[] = (existingCards || []).map((c: EvidenceCard) => c.id);
+      const systemPrompt = buildDeepenPrompt(focus, existingCards || []);
 
-      const messages: OpenAI.ChatCompletionMessageParam[] = [
-        {
-          role: "system",
-          content: buildDeepenPrompt(focus, existingCards || []),
-        },
-        {
-          role: "user",
-          content: `Dig deeper into "${focus}" for URL: ${url} (domain: ${domain})`,
-        },
-      ];
+      let result = await openai.responses.create({
+        model: "gpt-4o",
+        instructions: systemPrompt,
+        input: `Dig deeper into "${focus}" for URL: ${url} (domain: ${domain})`,
+        tools,
+      });
 
       const MAX_ITERATIONS = 8;
       for (let i = 0; i < MAX_ITERATIONS; i++) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages,
-          tools,
-          tool_choice: i === 0 ? "required" : "auto",
-        });
+        const toolCalls = result.output.filter(
+          (item) => item.type === "function_call"
+        );
 
-        const assistantMessage = completion.choices[0].message;
-        messages.push(assistantMessage);
+        if (toolCalls.length === 0) break;
 
-        if (
-          !assistantMessage.tool_calls ||
-          assistantMessage.tool_calls.length === 0
-        ) {
-          break;
+        const toolResults: OpenAI.Responses.ResponseInputItem[] = [];
+
+        for (const item of result.output) {
+          if (item.type === "function_call") {
+            toolResults.push({
+              type: "function_call",
+              id: item.id,
+              call_id: item.call_id,
+              name: item.name,
+              arguments: item.arguments,
+            });
+          }
         }
 
-        for (const toolCall of assistantMessage.tool_calls) {
-          if (toolCall.type !== "function") continue;
-          const args = JSON.parse(toolCall.function.arguments);
-          const result = await executeTool(
-            toolCall.function.name,
-            args,
-            send,
-            cardIds
-          );
+        for (const call of toolCalls) {
+          if (call.type !== "function_call") continue;
 
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: result,
-          });
+          send("narration", { text: `Running ${call.name.replace(/_/g, " ")}...` });
+
+          try {
+            const args = JSON.parse(call.arguments);
+            const output = await executeTool(call.name, args, send, cardIds);
+            toolResults.push({
+              type: "function_call_output",
+              call_id: call.call_id,
+              output,
+            });
+          } catch (error) {
+            toolResults.push({
+              type: "function_call_output",
+              call_id: call.call_id,
+              output: JSON.stringify({
+                error: error instanceof Error ? error.message : "Tool failed",
+              }),
+            });
+          }
+        }
+
+        result = await openai.responses.create({
+          model: "gpt-4o",
+          instructions: systemPrompt,
+          input: toolResults,
+          tools,
+        });
+      }
+
+      const textOutput = result.output.find((item) => item.type === "message");
+      if (textOutput && textOutput.type === "message") {
+        const textContent = textOutput.content.find((c) => c.type === "output_text");
+        if (textContent && textContent.type === "output_text") {
+          send("narration", { text: textContent.text });
         }
       }
 

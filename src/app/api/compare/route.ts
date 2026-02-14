@@ -1,10 +1,8 @@
 import { NextRequest } from "next/server";
 import { createSSEResponse } from "@/lib/stream";
 import OpenAI from "openai";
-import { v4 as uuid } from "uuid";
-
-// Tool implementation — Yifan builds this
-import { searchPrices } from "@/lib/tools/priceSearch";
+import { priceSearch } from "@/lib/tools/priceSearch";
+import type { EvidenceCard } from "@/types";
 
 const openai = new OpenAI();
 
@@ -15,55 +13,53 @@ export async function POST(req: NextRequest) {
 
   (async () => {
     try {
-      // Step 1: Use OpenAI to extract the product name from the URL
-      const extraction = await openai.chat.completions.create({
+      // Step 1: Extract product name from URL via OpenAI
+      const extraction = await openai.responses.create({
         model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: `Extract the product name from this URL. Return ONLY the product name, nothing else: ${productUrl}`,
-          },
-        ],
+        input: `Extract the product name from this URL. Return ONLY the product name, nothing else: ${productUrl}`,
       });
-      const productName = extraction.choices[0].message.content || "";
 
-      // Step 2: Search for prices across retailers (Yifan's tool)
-      const { results } = await searchPrices(productName);
+      const textOutput = extraction.output.find((item) => item.type === "message");
+      let productName = "";
+      if (textOutput && textOutput.type === "message") {
+        const textContent = textOutput.content.find((c) => c.type === "output_text");
+        if (textContent && textContent.type === "output_text") {
+          productName = textContent.text;
+        }
+      }
 
-      // Step 3: Emit a price card for each retailer
+      if (!productName) {
+        send("error", { message: "Could not extract product name" });
+        close();
+        return;
+      }
+
+      send("narration", { text: `Searching prices for "${productName}"...` });
+
+      // Step 2: Search prices (Yifan's tool)
+      const priceCards = await priceSearch(productUrl);
       const cardIds: string[] = [];
-      for (const result of results) {
-        const id = uuid();
-        cardIds.push(id);
-        send("card", {
-          id,
-          type: "price",
-          severity: "info",
-          title: `${result.retailer}: $${result.price}`,
-          detail: result.inStock ? "In stock" : "Out of stock",
-          source: result.retailer,
-          confidence: 0.8,
-          connections: [],
-          metadata: result,
-        });
 
-        // Stagger cards for animation effect
+      // Step 3: Emit price cards
+      for (const card of priceCards) {
+        cardIds.push(card.id);
+        send("card", card);
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      // Step 4: Calculate and emit savings card
-      if (results.length > 1) {
-        const prices = results
-          .map((r: { price: number }) => r.price)
-          .filter((p: number) => p > 0);
+      // Step 4: Calculate savings
+      const prices = priceCards
+        .map((c: EvidenceCard) => c.metadata?.price as number)
+        .filter((p): p is number => typeof p === "number" && p > 0);
+
+      if (prices.length > 1) {
         const maxPrice = Math.max(...prices);
         const minPrice = Math.min(...prices);
         const savings = maxPrice - minPrice;
 
         if (savings > 0) {
-          const savingsId = uuid();
-          send("card", {
-            id: savingsId,
+          const savingsCard: EvidenceCard = {
+            id: `savings-${Date.now()}`,
             type: "alert",
             severity: "safe",
             title: `Save $${savings.toFixed(2)}`,
@@ -72,17 +68,17 @@ export async function POST(req: NextRequest) {
             confidence: 0.9,
             connections: cardIds,
             metadata: { savings },
-          });
+          };
+          send("card", savingsCard);
 
-          // Connect savings card to all price cards
           for (const targetId of cardIds) {
-            send("connection", { from: savingsId, to: targetId });
+            send("connection", { from: savingsCard.id, to: targetId });
           }
         }
       }
 
       send("done", {
-        summary: `Found ${results.length} prices for ${productName}`,
+        summary: `Found ${priceCards.length} prices for ${productName}`,
       });
     } catch (error) {
       console.error("Compare error:", error);
