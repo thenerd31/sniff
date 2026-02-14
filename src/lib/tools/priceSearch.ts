@@ -44,11 +44,22 @@ export async function priceSearch(productUrl: string): Promise<EvidenceCard[]> {
     const messages: PerplexityMessage[] = [
       {
         role: "system",
-        content: `You are a price comparison assistant. Given a product URL, find the same or very similar product on other legitimate retailers. Return ONLY a JSON array of objects with these fields: retailer (string), price (number), currency (string, e.g. "USD"), url (string), inStock (boolean). Return at most 5 results. If you cannot find prices, return an empty array [].`,
+        content: `You are a price comparison assistant. Given a product URL, find the CURRENT, EXACT price of the same product on major retailers.
+
+CRITICAL: Only return prices you can verify from actual retailer pages right now. Do NOT guess or estimate prices. If you are unsure of a price, do not include it.
+
+Return ONLY a JSON array of objects with these fields:
+- retailer (string): The store name
+- price (number): The CURRENT listed price in USD (not the original/crossed-out price — the actual price the customer pays today)
+- currency (string): "USD"
+- url (string): Direct link to the product page
+- inStock (boolean): Whether it's currently available
+
+Return at most 5 results. If you cannot verify a price, omit that retailer. Return an empty array [] if no verified prices found.`,
       },
       {
         role: "user",
-        content: `Find prices for the product at this URL across legitimate retailers: ${productUrl}`,
+        content: `Find the current, verified prices for the product at this URL across legitimate retailers (Amazon, Best Buy, Walmart, Target, etc.): ${productUrl}`,
       },
     ];
 
@@ -59,7 +70,7 @@ export async function priceSearch(productUrl: string): Promise<EvidenceCard[]> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "sonar",
+        model: "sonar-pro",
         messages,
       }),
       signal: AbortSignal.timeout(30000),
