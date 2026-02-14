@@ -65,6 +65,15 @@ export interface CompareRequest {
   productUrl: string;
 }
 
+export interface ShoppingRequest {
+  /** Free-text search query or product description (optional). */
+  text?: string;
+  /** Base64-encoded image bytes or full data-URI (optional). */
+  imageBase64?: string;
+  /** MIME type of the image, e.g. "image/jpeg" (optional). */
+  imageMediaType?: string;
+}
+
 // Server-Sent Event types (streamed to frontend)
 export type SSEEvent =
   | { event: "card"; data: EvidenceCard }

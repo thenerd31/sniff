@@ -6,6 +6,7 @@ import { redditSearch } from "./reddit";
 import { scamadviserCheck } from "./scamadviser";
 import { priceSearch } from "./priceSearch";
 import { brandImpersonationCheck } from "./brand-impersonation";
+import { sellerCheck } from "./seller-check";
 import type { EvidenceCard } from "@/types";
 
 function defineTool(name: string, description: string) {
@@ -59,6 +60,10 @@ export const toolDefinitions = [
     "brand_impersonation_check",
     "Uses an LLM to detect whether the URL is impersonating a well-known brand. Catches typosquatting (amaz0n, paypai), keyword stuffing (apple-support-team.com), and lookalike TLDs that Levenshtein-based checks miss."
   ),
+  defineTool(
+    "seller_check",
+    "For marketplace URLs (Amazon, eBay, Etsy), scrapes the product page and uses an LLM to extract the third-party seller's name, rating, review count, and account age, then flags bad sellers. Also analyzes review authenticity for any e-commerce page, detecting fake review patterns like time-clustered posts and generic language."
+  ),
 ];
 
 // Tool executor map
@@ -83,6 +88,8 @@ export async function executeTool(
       return priceSearch(args.url);
     case "brand_impersonation_check":
       return brandImpersonationCheck(args.url);
+    case "seller_check":
+      return sellerCheck(args.url);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
