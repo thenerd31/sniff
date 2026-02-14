@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Menu,
   X,
@@ -347,6 +348,42 @@ function SavingsCard({
 }
 
 /* ──────────────────────── Main page ───────────────────────── */
+function HeroSearch() {
+  const [url, setUrl] = useState("");
+  const router = useRouter();
+
+  function handleInvestigate() {
+    const target = url.trim() || "https://www.amazon.com/dp/B0DEMO12345";
+    router.push(`/board?url=${encodeURIComponent(target)}`);
+  }
+
+  return (
+    <>
+      <div className="flex w-full max-w-[600px] items-center gap-0 rounded-xl border border-white/15 bg-white/5 transition-colors focus-within:border-coral/50 focus-within:bg-white/[0.08]">
+        <Search className="ml-4 h-5 w-5 shrink-0 text-white/30" />
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleInvestigate()}
+          placeholder="Paste an Amazon link to investigate..."
+          className="h-14 flex-1 bg-transparent px-3 text-[15px] text-white placeholder:text-white/30 focus:outline-none"
+        />
+        <button
+          onClick={handleInvestigate}
+          className="m-1.5 flex h-11 items-center gap-2 rounded-lg bg-coral px-6 text-[14px] font-semibold text-white transition-all hover:bg-[#e5593a]"
+        >
+          Investigate
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+      <p className="text-sm text-white/30">
+        Works with Amazon, Walmart, eBay, AliExpress &amp; more
+      </p>
+    </>
+  );
+}
+
 export default function Home() {
   return (
     <div className="relative min-h-screen bg-[#0a1628]">
@@ -396,22 +433,7 @@ export default function Home() {
             </p>
 
             {/* Search bar */}
-            <div className="flex w-full max-w-[600px] items-center gap-0 rounded-xl border border-white/15 bg-white/5 transition-colors focus-within:border-coral/50 focus-within:bg-white/[0.08]">
-              <Search className="ml-4 h-5 w-5 shrink-0 text-white/30" />
-              <input
-                type="text"
-                placeholder="Paste an Amazon link to investigate..."
-                className="h-14 flex-1 bg-transparent px-3 text-[15px] text-white placeholder:text-white/30 focus:outline-none"
-              />
-              <button className="m-1.5 flex h-11 items-center gap-2 rounded-lg bg-coral px-6 text-[14px] font-semibold text-white transition-all hover:bg-[#e5593a]">
-                Investigate
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            <p className="text-sm text-white/30">
-              Works with Amazon, Walmart, eBay, AliExpress &amp; more
-            </p>
+            <HeroSearch />
           </div>
         </div>
       </section>
