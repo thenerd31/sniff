@@ -1,0 +1,271 @@
+/* ── Dashboard — Saved Items ──────────────────────────────────────────── */
+
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+
+/* ── Design Tokens ──────────────────────────────────────────────────── */
+
+:root {
+  --pixel-bg: #fff8e8;
+  --pixel-border: #1a1a1a;
+  --pixel-gold: #ffd700;
+  --pixel-gold-dark: #8b6914;
+  --pixel-brand: #ff6b00;
+  --pixel-surface: #d4c4a0;
+  --pixel-dirt: #c4a46c;
+}
+
+/* ── Pixel Frame ────────────────────────────────────────────────────── */
+
+.dash-pixel-frame {
+  border: 4px solid #1a1a1a;
+  background: #fff8e8;
+  box-shadow: 4px 4px 0 #8b6914;
+  image-rendering: pixelated;
+}
+
+/* ── Pixel Buttons ──────────────────────────────────────────────────── */
+
+.dashboard-pixel-btn {
+  image-rendering: pixelated;
+  border: 3px solid #1a1a1a;
+  background: #fff8e8;
+  box-shadow: 0 4px 0 #1a1a1a;
+  transform: translateY(0);
+  transition: transform 0.05s, box-shadow 0.05s, background 0.1s,
+    color 0.1s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dashboard-pixel-btn:hover {
+  background: #ffd700;
+}
+
+.dashboard-pixel-btn:active {
+  box-shadow: 0 1px 0 #1a1a1a;
+  transform: translateY(3px);
+}
+
+.dashboard-pixel-btn.selected {
+  background: #ff6b00;
+  color: #ffffff;
+  box-shadow: 0 2px 0 #cc5500;
+}
+
+.dashboard-pixel-btn.danger-btn {
+  background: #ff4444;
+  color: #ffffff;
+  box-shadow: 0 4px 0 #cc0000;
+}
+
+.dashboard-pixel-btn.danger-btn:hover {
+  background: #ff6666;
+}
+
+.dashboard-pixel-btn.danger-btn:active {
+  box-shadow: 0 1px 0 #cc0000;
+  transform: translateY(3px);
+}
+
+.dashboard-pixel-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Severity Bar ───────────────────────────────────────────────────── */
+
+.pixel-severity-bar {
+  height: 8px;
+  background: #d4c4a0;
+  border: 2px solid #1a1a1a;
+}
+
+.pixel-severity-fill {
+  height: 100%;
+  transition: width 0.5s ease-out;
+}
+
+.pixel-severity-fill.severity-low {
+  background: #00cc00;
+}
+
+.pixel-severity-fill.severity-mid {
+  background: #ffd700;
+}
+
+.pixel-severity-fill.severity-high {
+  background: #ff4444;
+}
+
+/* ── Verdict Badges ─────────────────────────────────────────────────── */
+
+.pixel-verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 2px solid #1a1a1a;
+  font-family: "Press Start 2P", monospace;
+  font-size: 6px;
+  image-rendering: pixelated;
+}
+
+.pixel-verdict-badge.verdict-trusted {
+  background: #00cc00;
+  color: #1a1a1a;
+}
+
+.pixel-verdict-badge.verdict-caution {
+  background: #ffd700;
+  color: #1a1a1a;
+}
+
+.pixel-verdict-badge.verdict-danger {
+  background: #ff0000;
+  color: #ffffff;
+}
+
+/* ── Trust Score Segments ───────────────────────────────────────────── */
+
+.score-segment {
+  width: 100%;
+  height: 12px;
+  border: 2px solid #1a1a1a;
+  background: #d4c4a0;
+  transition: background 0.3s ease-out;
+}
+
+.score-segment.filled.verdict-trusted {
+  background: #00cc00;
+}
+
+.score-segment.filled.verdict-caution {
+  background: #ffd700;
+}
+
+.score-segment.filled.verdict-danger {
+  background: #ff4444;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────── */
+
+@keyframes dashboard-card-enter {
+  0% {
+    transform: translateY(20px) scale(0.9);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-3px) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dashboard-report-expand {
+  0% {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  100% {
+    max-height: 800px;
+    opacity: 1;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+}
+
+@keyframes card-remove {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-4px);
+  }
+  60% {
+    transform: translateX(4px);
+    opacity: 0.5;
+  }
+  80% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+@keyframes stat-bounce {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes empty-fade-in {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes check-row-enter {
+  0% {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes score-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* ── Pixel Blink (reused) ───────────────────────────────────────────── */
+
+@keyframes pixel-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
