@@ -222,9 +222,9 @@ const TYPE_ICONS: Record<CardType, React.FC<{ className?: string }>> = {
   coupon: Ticket,
 };
 
-/* Horizontal linear positioning — all nodes on the same Y */
+/* Horizontal linear positioning — all nodes on the same Y, strictly snapped */
 const NODE_SPACING_X = 380;
-const NODE_Y = 0;
+const NODE_Y = 150;
 
 function getLinearPosition(index: number): { x: number; y: number } {
   return {
@@ -462,9 +462,14 @@ interface LogEntry {
 
 function AgentLog({ logs }: { logs: LogEntry[] }) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Always lock scroll to the bottom when new logs arrive
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollAreaRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [logs.length]);
 
   return (
@@ -485,7 +490,7 @@ function AgentLog({ logs }: { logs: LogEntry[] }) {
       </div>
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto p-4">
         <AnimatePresence>
           {logs.map((log) => (
             <motion.div
@@ -562,39 +567,7 @@ function DigDeeperPanel({
 
 function ResultsBackground() {
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "linear-gradient(160deg, #FFFFFF 0%, #FFF7ED 30%, #FFFFFF 55%, #FFEDD5 80%, #FFFFFF 100%)",
-          backgroundSize: "400% 400%",
-          animation: "mesh-shift 24s ease-in-out infinite",
-        }}
-      />
-      <div
-        className="absolute -bottom-[15%] -right-[10%] h-[400px] w-[400px] rounded-full"
-        style={{
-          background: "radial-gradient(circle, rgba(255,107,0,0.04) 0%, rgba(255,237,213,0.06) 40%, transparent 70%)",
-          animation: "orb-drift-3 18s ease-in-out infinite",
-          filter: "blur(70px)",
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px)",
-          backgroundSize: "20px 20px",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          backgroundRepeat: "repeat",
-          backgroundSize: "256px 256px",
-        }}
-      />
-    </div>
+    <div className="pointer-events-none absolute inset-0 z-0" style={{ background: "#F9FAFB" }} />
   );
 }
 
@@ -607,8 +580,7 @@ function FindingCard({ card, index }: { card: EvidenceCard; index: number }) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08, ease: "easeOut" }}
-      className={`rounded-2xl border ${colors.border} bg-white/80 p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)]`}
-      style={{ backdropFilter: "blur(16px)" }}
+      className={`rounded-2xl border ${colors.border} bg-white p-6 shadow-[0_2px_12px_rgba(0,0,0,0.04)]`}
     >
       <div className="mb-3 flex items-center gap-3">
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${colors.bg}`}>
@@ -665,7 +637,7 @@ function ResultsSection({
     : "bg-red-500";
 
   return (
-    <div ref={resultsRef} className="relative min-h-[50vh] px-8 py-10">
+    <div ref={resultsRef} className="relative min-h-screen px-8 py-10">
       <ResultsBackground />
 
       <div className="relative z-10 mx-auto flex max-w-[720px] flex-col gap-5">
@@ -676,8 +648,7 @@ function ResultsSection({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="rounded-2xl border border-gray-200 bg-white/80 p-8 shadow-[0_8px_40px_rgba(0,0,0,0.07)]"
-              style={{ backdropFilter: "blur(20px)" }}
+              className="rounded-2xl border border-gray-200 bg-white p-8 shadow-[0_2px_16px_rgba(0,0,0,0.05)]"
             >
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-red-200 bg-red-50">
@@ -730,10 +701,9 @@ function ResultsSection({
             <div className="h-10" />
           </>
         ) : (
-          <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
             <div
-              className="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
-              style={{ backdropFilter: "blur(16px)" }}
+              className="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)]"
             >
               <FileSearch className="h-6 w-6 text-subtle" />
             </div>
@@ -782,6 +752,7 @@ export default function BoardPage() {
   const prevCardIdRef = useRef("hero");
   const resultsRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const reactFlowSectionRef = useRef<HTMLDivElement>(null);
 
   function addLog(text: string) {
     const now = new Date();
@@ -792,12 +763,39 @@ export default function BoardPage() {
     setLogs((prev) => [...prev, { id: logIdRef.current++, text, timestamp: ts }]);
   }
 
-  // Auto-scroll to results when investigation completes
+  // Auto-scroll to results when investigation completes — slow cinematic ease
   useEffect(() => {
     if (status === "complete" && resultsRef.current && scrollContainerRef.current) {
       const timer = setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 300);
+        const container = scrollContainerRef.current;
+        const target = resultsRef.current;
+        if (!container || !target) return;
+
+        const start = container.scrollTop;
+        // Scroll just far enough to hide the React Flow section
+        const flowSection = reactFlowSectionRef.current;
+        const end = flowSection
+          ? flowSection.offsetTop + flowSection.offsetHeight
+          : target.offsetTop;
+        const distance = end - start;
+        const duration = 1400; // ms — slow & intentional
+        let startTime: number | null = null;
+
+        // cubic ease-in-out
+        function ease(t: number) {
+          return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function step(timestamp: number) {
+          if (!startTime) startTime = timestamp;
+          const elapsed = timestamp - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          container!.scrollTop = start + distance * ease(progress);
+          if (progress < 1) requestAnimationFrame(step);
+        }
+
+        requestAnimationFrame(step);
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [status]);
@@ -811,7 +809,7 @@ export default function BoardPage() {
     const heroNode: Node = {
       id: "hero",
       type: "heroCard",
-      position: { x: 0, y: NODE_Y },
+      position: { x: 0, y: NODE_Y - 20 },
       data: { url: targetUrl, threatScore: 0, status: "investigating", summary: "" },
       draggable: true,
     };
@@ -859,7 +857,7 @@ export default function BoardPage() {
                 id: `${sourceId}-${card.id}`,
                 source: sourceId,
                 target: card.id,
-                type: "smoothstep",
+                type: "straight",
                 animated: true,
                 style: { stroke: "#FF6B00", strokeWidth: 1.5, strokeDasharray: "8 4" },
                 labelStyle: { fill: "#4B5563", fontSize: 9 },
@@ -922,7 +920,7 @@ export default function BoardPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-brand">
             <ShoppingBag className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="text-sm font-bold text-foreground">Sentinel</span>
+          <span className="text-sm font-bold text-foreground">Sniff</span>
         </a>
 
         <div className="mx-3 h-5 w-px bg-gray-200" />
@@ -956,7 +954,7 @@ export default function BoardPage() {
               initial={{ x: -320, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ type: "spring", stiffness: 200, damping: 26 }}
-              className="relative z-20 flex h-full w-[320px] shrink-0 flex-col gap-3 border-r border-gray-200 p-3"
+              className="relative z-20 flex h-full w-[320px] shrink-0 flex-col gap-3 border-r border-gray-200 bg-white/50 p-3"
             >
               <AgentLog logs={logs} />
               <DigDeeperPanel
@@ -972,7 +970,7 @@ export default function BoardPage() {
         {/* Right content — single scrollable column */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
           {/* ── React Flow canvas (fixed 50vh) ── */}
-          <div className="relative h-[50vh] shrink-0 overflow-hidden">
+          <div ref={reactFlowSectionRef} className="relative h-[50vh] shrink-0 overflow-hidden">
             <BoardBackground />
 
             <div className="relative z-10 h-full w-full">
@@ -999,8 +997,16 @@ export default function BoardPage() {
             </div>
           </div>
 
-          {/* ── Divider ── */}
-          <div className="relative z-20 h-px w-full bg-gray-200" />
+          {/* ── Fade separator: grid → solid ── */}
+          <div className="relative z-20">
+            <div className="h-px w-full bg-gray-100" />
+            <div
+              className="h-6 w-full"
+              style={{
+                background: "linear-gradient(to bottom, rgba(255,255,255,0) 0%, #F9FAFB 100%)",
+              }}
+            />
+          </div>
 
           {/* ── Results section (expands with content) ── */}
           <ResultsSection

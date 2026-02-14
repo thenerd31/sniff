@@ -94,7 +94,7 @@ function Navbar() {
             <ShoppingBag className="h-4 w-4 text-white" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">
-            Sentinel
+            Sniff
           </span>
         </a>
 
@@ -308,7 +308,7 @@ export default function Home() {
 
             {/* Subheadline */}
             <p className="max-w-[560px] text-lg leading-relaxed text-muted md:text-xl" style={{ color: '#4B5563' }}>
-              Paste any product link and Sentinel instantly finds the best
+              Paste any product link and Sniff instantly finds the best
               price across every store — so you never overpay again.
             </p>
 
@@ -341,7 +341,7 @@ export default function Home() {
               <span className="font-display italic font-semibold text-brand">Save</span>
             </h2>
             <p className="max-w-[640px] text-base leading-relaxed md:text-lg" style={{ color: '#4B5563' }}>
-              From price tracking to deal alerts, Sentinel is your AI shopping
+              From price tracking to deal alerts, Sniff is your AI shopping
               companion that finds the best prices across the entire internet.
             </p>
           </div>
@@ -402,7 +402,7 @@ export default function Home() {
                   Deal discovery flow
                 </h3>
                 <p className="text-sm leading-relaxed text-muted">
-                  Watch as Sentinel traces your product from retail to source,
+                  Watch as Sniff traces your product from retail to source,
                   uncovering every deal along the way in real time.
                 </p>
               </div>
@@ -521,7 +521,7 @@ export default function Home() {
               <span className="font-display italic font-semibold text-brand">Products</span>
             </h2>
             <p className="max-w-[500px] text-base leading-relaxed" style={{ color: '#4B5563' }}>
-              Deals our shoppers have found using Sentinel.
+              Deals our shoppers have found using Sniff.
             </p>
           </div>
 
@@ -574,7 +574,7 @@ export default function Home() {
             Built at TreeHacks 2026
           </h2>
           <p className="text-base leading-relaxed" style={{ color: '#4B5563' }}>
-            Sentinel started as a question: why do we pay 5&ndash;10x markup
+            Sniff started as a question: why do we pay 5&ndash;10x markup
             on everyday products when the same item exists at a fraction of the
             price? We built an AI shopping assistant that finds the best deals
             across the entire internet — so you always get the best price.
@@ -590,7 +590,7 @@ export default function Home() {
               <ShoppingBag className="h-3 w-3 text-white" />
             </div>
             <span className="text-sm font-medium">
-              Sentinel &copy; {new Date().getFullYear()}
+              Sniff &copy; {new Date().getFullYear()}
             </span>
           </div>
           <div className="flex items-center gap-6 text-sm text-subtle">
