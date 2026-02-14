@@ -5,26 +5,18 @@ import { FlipCard } from "./FlipCard";
 import { useResultsStore } from "@/stores/resultsStore";
 import type { ProductWithVerdict } from "@/types";
 
+const PIXEL_FONT = "'Press Start 2P', monospace";
+
 interface ShuffleSortProps {
   products: ProductWithVerdict[];
   onComplete: () => void;
 }
 
-/**
- * ShuffleSort — Pure CSS @keyframes animation (no Framer Motion animate prop).
- *
- * Timeline:
- *   0.0s → Cards scatter from center to random positions (shuffle-scatter)
- *   0.9s → "Sorting by price..." label appears
- *   1.4s → Cards reconsolidate to horizontal row sorted by price (shuffle-consolidate)
- *   3.2s → onComplete fires
- */
 export function ShuffleSort({ products, onComplete }: ShuffleSortProps) {
   const completeFired = useRef(false);
   const savedItems = useResultsStore((s) => s.savedItems);
   const toggleSave = useResultsStore((s) => s.toggleSave);
 
-  // Stable random scatter positions
   const randomPositions = useMemo(
     () =>
       products.map(() => ({
@@ -41,7 +33,6 @@ export function ShuffleSort({ products, onComplete }: ShuffleSortProps) {
     [products]
   );
 
-  // Final horizontal positions
   const cardW = 240;
   const gap = 24;
   const totalW = sortedProducts.length * cardW + (sortedProducts.length - 1) * gap;
@@ -65,7 +56,6 @@ export function ShuffleSort({ products, onComplete }: ShuffleSortProps) {
     return () => clearTimeout(timer);
   }, [onComplete]);
 
-  // Map original product index for scatter positions
   const productIndexMap = useMemo(() => {
     const m: Record<string, number> = {};
     products.forEach((p, i) => {
@@ -76,22 +66,25 @@ export function ShuffleSort({ products, onComplete }: ShuffleSortProps) {
 
   return (
     <div className="relative w-full overflow-hidden" style={{ height: 500 }}>
-      {/* "Sorting by price..." overlay */}
+      {/* "Sorting by price..." overlay — pixel dialogue */}
       <div
         className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
         style={{
           animation: "sorting-label 1.4s ease 0.7s both",
         }}
       >
-        <p
-          className="text-lg font-semibold px-6 py-3 rounded-2xl shadow-lg backdrop-blur-sm"
+        <div
           style={{
-            background: "rgba(255,255,255,0.9)",
-            color: "var(--foreground)",
+            border: "4px solid #1A1A1A",
+            background: "#FFF8E8",
+            boxShadow: "4px 4px 0 #1A1A1A",
+            padding: "10px 20px",
           }}
         >
-          Sorting by price...
-        </p>
+          <p style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#8B6914" }}>
+            SORTING BY PRICE...
+          </p>
+        </div>
       </div>
 
       {/* Cards */}

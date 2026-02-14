@@ -24,8 +24,8 @@ export function FlipCard({
   className = "",
 }: FlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // When the cursor moves into the action button area, unflip so buttons stay clickable
   const handleActionAreaEnter = useCallback(() => {
     setIsFlipped(false);
   }, []);
@@ -33,9 +33,19 @@ export function FlipCard({
   return (
     <div
       className={`relative ${className}`}
-      style={{ perspective: 1000 }}
-      onMouseEnter={() => setIsFlipped(true)}
-      onMouseLeave={() => setIsFlipped(false)}
+      style={{
+        perspective: 1000,
+        // Pixel-art bob animation on hover (only when not flipped)
+        animation: isHovered && !isFlipped ? "pixel-card-bob 0.6s steps(2) infinite" : undefined,
+      }}
+      onMouseEnter={() => {
+        setIsFlipped(true);
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsFlipped(false);
+        setIsHovered(false);
+      }}
     >
       <motion.div
         className="relative w-full h-full"
