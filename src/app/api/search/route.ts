@@ -107,9 +107,13 @@ export async function POST(req: NextRequest) {
 
       await Promise.allSettled(
         products.map(async (product) => {
-          const result = await runFraudChecks(product, (productId, check) => {
-            send("fraud_check", { productId, check });
-          });
+          const result = await runFraudChecks(
+            product,
+            (productId, check) => {
+              send("fraud_check", { productId, check });
+            },
+            products, // pass all products for price anomaly detection
+          );
 
           verdicts.set(product.id, {
             verdict: result.verdict,

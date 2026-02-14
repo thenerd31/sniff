@@ -9,16 +9,26 @@ import { sellerCheck } from "./seller-check";
 // Runs 4 independent fraud checks on a product result.
 // Each check streams its result via the onCheck callback.
 // Returns a final verdict and trust score.
+//
+// IMPORTANT: Checks must use product.domain (the retailer's domain),
+// NOT product.url (which may be a Google Shopping redirect URL).
 
 type OnCheckCallback = (productId: string, check: FraudCheck) => void;
+
+/** Build a simple URL from the retailer domain for tools that need a URL. */
+function domainToUrl(domain: string): string {
+  return `https://${domain}`;
+}
 
 /**
  * Run all 4 fraud checks on a product in parallel.
  * Streams individual check results via onCheck callback.
+ * Also checks for price anomalies against the cohort.
  */
 export async function runFraudChecks(
   product: ProductResult,
   onCheck: OnCheckCallback,
+  allProducts?: ProductResult[], // pass all products for price anomaly detection
 ): Promise<{ verdict: ProductVerdict; trustScore: number; checks: FraudCheck[] }> {
   const checks: FraudCheck[] = [];
 
@@ -101,7 +111,51 @@ export async function runFraudChecks(
     })
   );
 
+  // ── Price anomaly detection ───────────────────────────────────────
+  if (allProducts && allProducts.length >= 3) {
+    const prices = allProducts
+      .filter((p) => p.price > 0 && isHighAuthorityDomain(p.domain))
+      .map((p) => p.price);
+
+    if (prices.length >= 2) {
+      const median = prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)];
+      const pctBelow = ((median - product.price) / median) * 100;
+
+      if (pctBelow >= 60) {
+        // This product is 60%+ cheaper than the median trusted price — very suspicious
+        const priceCheck: FraudCheck = {
+          name: "Retailer Reputation", // Override the reputation check
+          status: "failed",
+          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below trusted retailer median ($${median.toFixed(2)}) — likely counterfeit or scam`,
+          severity: 0.9,
+        };
+        // Replace the existing reputation check with the price anomaly
+        const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
+        if (repIdx >= 0) {
+          // Combine: keep the original detail but escalate severity
+          const original = checks[repIdx];
+          checks[repIdx] = {
+            ...priceCheck,
+            detail: `${priceCheck.detail}. Domain: ${original.detail}`,
+          };
+        } else {
+          checks.push(priceCheck);
+        }
+        onCheck(product.id, priceCheck);
+      }
+    }
+  }
+
   // ── Compute verdict ─────────────────────────────────────────────────
+  // Use the worst severity per check name (in case we added a price override)
+  const checksByName = new Map<FraudCheckName, FraudCheck>();
+  for (const check of checks) {
+    const existing = checksByName.get(check.name);
+    if (!existing || check.severity > existing.severity) {
+      checksByName.set(check.name, check);
+    }
+  }
+
   const weights: Record<FraudCheckName, number> = {
     "Retailer Reputation": 0.30,
     "Safety Database": 0.30,
@@ -110,13 +164,14 @@ export async function runFraudChecks(
   };
 
   let weightedScore = 0;
-  for (const check of checks) {
-    weightedScore += (1 - check.severity) * (weights[check.name] || 0.25);
+  for (const [name, check] of checksByName) {
+    weightedScore += (1 - check.severity) * (weights[name] || 0.25);
   }
   const trustScore = Math.round(weightedScore * 100);
 
   let verdict: ProductVerdict;
-  if (checks.some((c) => c.status === "failed" && c.severity >= 0.8)) {
+  // Any single "failed" check with high severity → danger
+  if ([...checksByName.values()].some((c) => c.status === "failed" && c.severity >= 0.8)) {
     verdict = "danger";
   } else if (trustScore >= 70) {
     verdict = "trusted";
@@ -126,10 +181,11 @@ export async function runFraudChecks(
     verdict = "danger";
   }
 
-  return { verdict, trustScore, checks };
+  return { verdict, trustScore, checks: [...checksByName.values()] };
 }
 
 // ── Check 1: Retailer Reputation (WHOIS + domain analysis) ─────────────
+// Uses product.domain (NOT product.url) for WHOIS lookup.
 
 async function checkRetailerReputation(product: ProductResult): Promise<FraudCheck> {
   const SUSPICIOUS_TLDS = /\.(shop|buzz|xyz|top|click|gq|ml|tk|cf|ga|pw|cc|ws)$/i;
@@ -144,15 +200,16 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
     };
   }
 
-  // WHOIS check for domain age
+  // WHOIS check for domain age — use the RETAILER domain, not Google
   try {
-    const whoisCard = await whoisLookup(product.url);
+    const retailerUrl = domainToUrl(product.domain);
+    const whoisCard = await whoisLookup(retailerUrl);
 
     if (whoisCard.severity === "critical") {
       return {
         name: "Retailer Reputation",
         status: "failed",
-        detail: whoisCard.title + " — " + whoisCard.detail,
+        detail: `${product.domain}: ${whoisCard.title} — ${whoisCard.detail}`,
         severity: 0.9,
       };
     }
@@ -161,7 +218,7 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
       return {
         name: "Retailer Reputation",
         status: "warning",
-        detail: whoisCard.title + " — " + whoisCard.detail,
+        detail: `${product.domain}: ${whoisCard.title} — ${whoisCard.detail}`,
         severity: 0.5,
       };
     }
@@ -169,24 +226,26 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
     return {
       name: "Retailer Reputation",
       status: "passed",
-      detail: whoisCard.title + " — " + whoisCard.detail,
+      detail: `${product.domain}: ${whoisCard.title} — ${whoisCard.detail}`,
       severity: 0.1,
     };
   } catch {
     return {
       name: "Retailer Reputation",
       status: "warning",
-      detail: "Could not verify domain registration",
+      detail: `Could not verify domain registration for ${product.domain}`,
       severity: 0.4,
     };
   }
 }
 
 // ── Check 2: Safety Database (Google Safe Browsing) ─────────────────────
+// Checks the RETAILER domain against Google's threat database.
 
 async function checkSafeBrowsing(product: ProductResult): Promise<FraudCheck> {
   try {
-    const sbCard = await safeBrowsingCheck(product.url);
+    const retailerUrl = domainToUrl(product.domain);
+    const sbCard = await safeBrowsingCheck(retailerUrl);
 
     if (sbCard.severity === "critical") {
       return {
@@ -200,7 +259,7 @@ async function checkSafeBrowsing(product: ProductResult): Promise<FraudCheck> {
     return {
       name: "Safety Database",
       status: "passed",
-      detail: sbCard.detail,
+      detail: `${product.domain}: ${sbCard.detail}`,
       severity: 0,
     };
   } catch {
@@ -214,10 +273,12 @@ async function checkSafeBrowsing(product: ProductResult): Promise<FraudCheck> {
 }
 
 // ── Check 3: Community Sentiment (Reddit) ───────────────────────────────
+// Searches Reddit for the RETAILER domain (not Google URL).
 
 async function checkCommunitySentiment(product: ProductResult): Promise<FraudCheck> {
   try {
-    const redditCard = await redditSearch(product.url);
+    const retailerUrl = domainToUrl(product.domain);
+    const redditCard = await redditSearch(retailerUrl);
 
     if (redditCard.severity === "critical") {
       return {
@@ -241,8 +302,8 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
       return {
         name: "Community Sentiment",
         status: "warning",
-        detail: "No online presence found — retailer has no Reddit mentions",
-        severity: 0.3,
+        detail: `No Reddit mentions found for ${product.domain} — retailer has no online presence`,
+        severity: 0.4,
       };
     }
 
@@ -256,17 +317,21 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
     return {
       name: "Community Sentiment",
       status: "warning",
-      detail: "Could not check community sentiment",
+      detail: `Could not check community sentiment for ${product.domain}`,
       severity: 0.3,
     };
   }
 }
 
 // ── Check 4: Seller / Review Verification (Yifan's seller-check) ────────
+// For known marketplaces, checks seller within the platform.
+// For direct retailers, analyzes page content and reviews.
+// Uses the RETAILER domain URL.
 
 async function checkSellerVerification(product: ProductResult): Promise<FraudCheck> {
   try {
-    const sellerCard = await sellerCheck(product.url);
+    const retailerUrl = domainToUrl(product.domain);
+    const sellerCard = await sellerCheck(retailerUrl);
 
     if (sellerCard.severity === "critical") {
       return {
@@ -305,7 +370,7 @@ async function checkSellerVerification(product: ProductResult): Promise<FraudChe
     return {
       name: "Seller Verification",
       status: "warning",
-      detail: "Could not verify seller page",
+      detail: `Could not verify seller at ${product.domain}`,
       severity: 0.3,
     };
   }
