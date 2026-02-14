@@ -73,3 +73,58 @@ export type SSEEvent =
   | { event: "narration"; data: { text: string } }
   | { event: "done"; data: { summary: string } }
   | { event: "error"; data: { message: string } };
+
+// ── Shopping Agent Types ─────────────────────────────────────────────────
+
+export interface ProductResult {
+  id: string;
+  title: string;
+  price: number;
+  currency: string;
+  retailer: string;
+  domain: string;
+  url: string;
+  imageUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  snippet?: string;
+}
+
+export type FraudCheckName =
+  | "Retailer Reputation"
+  | "Safety Database"
+  | "Community Sentiment"
+  | "Seller Verification";
+
+export type FraudCheckStatus = "passed" | "warning" | "failed" | "pending";
+
+export interface FraudCheck {
+  name: FraudCheckName;
+  status: FraudCheckStatus;
+  detail: string;
+  severity: number; // 0.0 - 1.0
+}
+
+export type ProductVerdict = "trusted" | "caution" | "danger";
+
+export interface ProductWithVerdict extends ProductResult {
+  checks: FraudCheck[];
+  verdict: ProductVerdict;
+  trustScore: number; // 0-100
+}
+
+export interface SearchRequest {
+  query?: string;
+  image?: string; // base64 encoded
+  url?: string;   // product URL to find alternatives for
+}
+
+export type SearchSSEEvent =
+  | { event: "narration"; data: { text: string } }
+  | { event: "product"; data: ProductResult }
+  | { event: "fraud_check"; data: { productId: string; check: FraudCheck } }
+  | { event: "verdict"; data: { productId: string; verdict: ProductVerdict; trustScore: number } }
+  | { event: "all_products"; data: { count: number } }
+  | { event: "best_pick"; data: { productId: string; savings?: number } }
+  | { event: "done"; data: { summary: string; totalProducts: number; trustedCount: number; flaggedCount: number } }
+  | { event: "error"; data: { message: string } };
