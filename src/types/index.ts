@@ -155,6 +155,12 @@ export type RefineResult =
       internalReasoning: string;
     }
   | {
+      type: "confirm";
+      refinedQuery: string;
+      searchQueries: string[];
+      internalReasoning: string;
+    }
+  | {
       type: "ready";
       refinedQuery: string;
       searchQueries: string[];
