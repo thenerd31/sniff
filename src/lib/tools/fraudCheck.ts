@@ -112,42 +112,63 @@ export async function runFraudChecks(
   );
 
   // ── Price anomaly detection ───────────────────────────────────────
-  if (allProducts && allProducts.length >= 3) {
-    const prices = allProducts
+  // Compare this product's price against the highest trusted-retailer price.
+  // If an unknown site is way cheaper than Best Buy/Amazon, it's suspicious.
+  if (allProducts && allProducts.length >= 3 && !isHighAuthorityDomain(product.domain)) {
+    const trustedPrices = allProducts
       .filter((p) => p.price > 0 && isHighAuthorityDomain(p.domain))
-      .map((p) => p.price);
+      .map((p) => p.price)
+      .sort((a, b) => a - b);
 
-    if (prices.length >= 2) {
-      const median = prices.sort((a, b) => a - b)[Math.floor(prices.length / 2)];
-      const pctBelow = ((median - product.price) / median) * 100;
+    if (trustedPrices.length >= 1) {
+      // Use the highest trusted price as the "retail" benchmark
+      // (Best Buy at $229 is more representative than eBay used at $39)
+      const retailPrice = trustedPrices[trustedPrices.length - 1];
+      const pctBelow = ((retailPrice - product.price) / retailPrice) * 100;
 
-      if (pctBelow >= 60) {
-        // This product is 60%+ cheaper than the median trusted price — very suspicious
+      if (pctBelow >= 50) {
         const priceCheck: FraudCheck = {
-          name: "Retailer Reputation", // Override the reputation check
+          name: "Retailer Reputation",
           status: "failed",
-          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below trusted retailer median ($${median.toFixed(2)}) — likely counterfeit or scam`,
-          severity: 0.9,
+          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — too good to be true`,
+          severity: 0.95,
         };
-        // Replace the existing reputation check with the price anomaly
         const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
         if (repIdx >= 0) {
-          // Combine: keep the original detail but escalate severity
           const original = checks[repIdx];
           checks[repIdx] = {
             ...priceCheck,
-            detail: `${priceCheck.detail}. Domain: ${original.detail}`,
+            detail: `${priceCheck.detail}. ${original.detail}`,
           };
         } else {
           checks.push(priceCheck);
         }
         onCheck(product.id, priceCheck);
+      } else if (pctBelow >= 30) {
+        // Moderately suspicious — flag but don't fail
+        const priceWarning: FraudCheck = {
+          name: "Retailer Reputation",
+          status: "warning",
+          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — unusually cheap`,
+          severity: 0.6,
+        };
+        const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
+        if (repIdx >= 0) {
+          const original = checks[repIdx];
+          if (priceWarning.severity > original.severity) {
+            checks[repIdx] = {
+              ...priceWarning,
+              detail: `${priceWarning.detail}. ${original.detail}`,
+            };
+          }
+        }
+        onCheck(product.id, priceWarning);
       }
     }
   }
 
   // ── Compute verdict ─────────────────────────────────────────────────
-  // Use the worst severity per check name (in case we added a price override)
+  // Use the worst severity per check name
   const checksByName = new Map<FraudCheckName, FraudCheck>();
   for (const check of checks) {
     const existing = checksByName.get(check.name);
@@ -156,11 +177,15 @@ export async function runFraudChecks(
     }
   }
 
+  // Rebalanced weights:
+  // - Safe Browsing is binary (passes for 99% of sites), so low weight
+  // - Retailer Reputation (WHOIS + price) is the strongest signal
+  // - Community Sentiment matters a lot (zero presence = suspicious)
   const weights: Record<FraudCheckName, number> = {
-    "Retailer Reputation": 0.30,
-    "Safety Database": 0.30,
-    "Community Sentiment": 0.20,
-    "Seller Verification": 0.20,
+    "Retailer Reputation": 0.35,
+    "Safety Database": 0.10,
+    "Community Sentiment": 0.30,
+    "Seller Verification": 0.25,
   };
 
   let weightedScore = 0;
@@ -169,13 +194,18 @@ export async function runFraudChecks(
   }
   const trustScore = Math.round(weightedScore * 100);
 
+  // Count how many checks failed or warned
+  const failedCount = [...checksByName.values()].filter((c) => c.status === "failed").length;
+  const warningCount = [...checksByName.values()].filter((c) => c.status === "warning").length;
+
   let verdict: ProductVerdict;
-  // Any single "failed" check with high severity → danger
-  if ([...checksByName.values()].some((c) => c.status === "failed" && c.severity >= 0.8)) {
+  if (failedCount >= 1 && [...checksByName.values()].some((c) => c.severity >= 0.8)) {
     verdict = "danger";
-  } else if (trustScore >= 70) {
+  } else if (failedCount >= 2) {
+    verdict = "danger";
+  } else if (trustScore >= 75) {
     verdict = "trusted";
-  } else if (trustScore >= 40) {
+  } else if (trustScore >= 45) {
     verdict = "caution";
   } else {
     verdict = "danger";
@@ -302,8 +332,8 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
       return {
         name: "Community Sentiment",
         status: "warning",
-        detail: `No Reddit mentions found for ${product.domain} — retailer has no online presence`,
-        severity: 0.4,
+        detail: `No Reddit mentions found for ${product.domain} — zero online presence is a red flag`,
+        severity: 0.7,
       };
     }
 
