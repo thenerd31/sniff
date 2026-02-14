@@ -94,7 +94,8 @@ export type FraudCheckName =
   | "Retailer Reputation"
   | "Safety Database"
   | "Community Sentiment"
-  | "Seller Verification";
+  | "Brand Impersonation"
+  | "Page Red Flags";
 
 export type FraudCheckStatus = "passed" | "warning" | "failed" | "pending";
 

@@ -3,12 +3,20 @@ import { isHighAuthorityDomain } from "@/lib/known-domains";
 import { whoisLookup } from "./whois";
 import { safeBrowsingCheck } from "./safe-browsing";
 import { redditSearch } from "./reddit";
-import { sellerCheck } from "./seller-check";
+import { brandImpersonationCheck } from "./brand-impersonation";
+import { scrapeForRedFlags } from "./scraper";
 
 // ── Fraud Check Orchestrator ────────────────────────────────────────────
-// Runs 4 independent fraud checks on a product result.
+// Runs 5 independent fraud checks on a product result.
 // Each check streams its result via the onCheck callback.
 // Returns a final verdict and trust score.
+//
+// Checks:
+//   1. Retailer Reputation — WHOIS domain age + suspicious TLD
+//   2. Safety Database     — Google Safe Browsing
+//   3. Community Sentiment — Reddit search + LLM sentiment
+//   4. Brand Impersonation — typosquatting / lookalike domain detection
+//   5. Page Red Flags      — urgency tactics, missing policies, suspicious payments
 //
 // IMPORTANT: Checks must use product.domain (the retailer's domain),
 // NOT product.url (which may be a Google Shopping redirect URL).
@@ -21,14 +29,14 @@ function domainToUrl(domain: string): string {
 }
 
 /**
- * Run all 4 fraud checks on a product in parallel.
+ * Run all 5 fraud checks on a product in parallel.
  * Streams individual check results via onCheck callback.
  * Also checks for price anomalies against the cohort.
  */
 export async function runFraudChecks(
   product: ProductResult,
   onCheck: OnCheckCallback,
-  allProducts?: ProductResult[], // pass all products for price anomaly detection
+  allProducts?: ProductResult[],
 ): Promise<{ verdict: ProductVerdict; trustScore: number; checks: FraudCheck[] }> {
   const checks: FraudCheck[] = [];
 
@@ -54,9 +62,15 @@ export async function runFraudChecks(
         severity: 0,
       },
       {
-        name: "Seller Verification",
+        name: "Brand Impersonation",
         status: "passed",
-        detail: "Verified marketplace",
+        detail: "Official domain — not an impersonator",
+        severity: 0,
+      },
+      {
+        name: "Page Red Flags",
+        status: "passed",
+        detail: "Trusted retailer — no scan needed",
         severity: 0,
       },
     ];
@@ -69,7 +83,7 @@ export async function runFraudChecks(
     return { verdict: "trusted", trustScore: 100, checks };
   }
 
-  // ── Full check: run all 4 in parallel ─────────────────────────────
+  // ── Full check: run all 5 in parallel ─────────────────────────────
   const checkFunctions: Array<{
     name: FraudCheckName;
     fn: () => Promise<FraudCheck>;
@@ -87,8 +101,12 @@ export async function runFraudChecks(
       fn: () => checkCommunitySentiment(product),
     },
     {
-      name: "Seller Verification",
-      fn: () => checkSellerVerification(product),
+      name: "Brand Impersonation",
+      fn: () => checkBrandImpersonation(product),
+    },
+    {
+      name: "Page Red Flags",
+      fn: () => checkPageRedFlags(product),
     },
   ];
 
@@ -114,7 +132,6 @@ export async function runFraudChecks(
   // ── Price anomaly detection ───────────────────────────────────────
   // Low price ALONE is not a red flag — resale platforms legitimately sell cheaper.
   // Price only matters when COMBINED with other red flags (no Reddit, hidden WHOIS).
-  // Logic: price amplifies existing suspicion, it doesn't create it.
   if (allProducts && allProducts.length >= 3 && !isHighAuthorityDomain(product.domain)) {
     const trustedPrices = allProducts
       .filter((p) => p.price > 0 && isHighAuthorityDomain(p.domain))
@@ -131,7 +148,6 @@ export async function runFraudChecks(
       ).length;
 
       if (pctBelow >= 50 && otherRedFlags >= 1) {
-        // Cheap price + at least one other red flag = scam pattern
         const priceCheck: FraudCheck = {
           name: "Retailer Reputation",
           status: "failed",
@@ -150,16 +166,14 @@ export async function runFraudChecks(
         }
         onCheck(product.id, priceCheck);
       } else if (pctBelow >= 50 && otherRedFlags === 0) {
-        // Cheap but site otherwise looks fine — just note it, don't penalize
         const priceNote: FraudCheck = {
           name: "Retailer Reputation",
           status: "warning",
           detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — could be used/refurbished`,
-          severity: 0.2, // mild — site passed other checks
+          severity: 0.2,
         };
         const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
         if (repIdx >= 0) {
-          // Don't override if existing check is already worse
           if (priceNote.severity > checks[repIdx].severity) {
             const original = checks[repIdx];
             checks[repIdx] = { ...priceNote, detail: `${priceNote.detail}. ${original.detail}` };
@@ -171,7 +185,6 @@ export async function runFraudChecks(
   }
 
   // ── Compute verdict ─────────────────────────────────────────────────
-  // Use the worst severity per check name
   const checksByName = new Map<FraudCheckName, FraudCheck>();
   for (const check of checks) {
     const existing = checksByName.get(check.name);
@@ -180,26 +193,22 @@ export async function runFraudChecks(
     }
   }
 
-  // Rebalanced weights:
-  // - Safe Browsing is binary (passes for 99% of sites), so low weight
-  // - Retailer Reputation (WHOIS + price) is the strongest signal
-  // - Community Sentiment matters a lot (zero presence = suspicious)
+  // Weights: 5 checks, rebalanced so junk signals don't dominate
   const weights: Record<FraudCheckName, number> = {
-    "Retailer Reputation": 0.35,
-    "Safety Database": 0.10,
-    "Community Sentiment": 0.30,
-    "Seller Verification": 0.25,
+    "Retailer Reputation": 0.30,  // WHOIS + price anomaly
+    "Safety Database": 0.05,      // binary, rarely fails
+    "Community Sentiment": 0.30,  // Reddit presence is a strong signal
+    "Brand Impersonation": 0.15,  // catches typosquatting
+    "Page Red Flags": 0.20,       // urgency, missing policies, suspicious payments
   };
 
   let weightedScore = 0;
   for (const [name, check] of checksByName) {
-    weightedScore += (1 - check.severity) * (weights[name] || 0.25);
+    weightedScore += (1 - check.severity) * (weights[name] || 0.20);
   }
   const trustScore = Math.round(weightedScore * 100);
 
-  // Count how many checks failed or warned
   const failedCount = [...checksByName.values()].filter((c) => c.status === "failed").length;
-  const warningCount = [...checksByName.values()].filter((c) => c.status === "warning").length;
 
   let verdict: ProductVerdict;
   if (failedCount >= 1 && [...checksByName.values()].some((c) => c.severity >= 0.8)) {
@@ -218,12 +227,10 @@ export async function runFraudChecks(
 }
 
 // ── Check 1: Retailer Reputation (WHOIS + domain analysis) ─────────────
-// Uses product.domain (NOT product.url) for WHOIS lookup.
 
 async function checkRetailerReputation(product: ProductResult): Promise<FraudCheck> {
   const SUSPICIOUS_TLDS = /\.(shop|buzz|xyz|top|click|gq|ml|tk|cf|ga|pw|cc|ws)$/i;
 
-  // Quick TLD check
   if (SUSPICIOUS_TLDS.test(product.domain)) {
     return {
       name: "Retailer Reputation",
@@ -233,7 +240,6 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
     };
   }
 
-  // WHOIS check for domain age — use the RETAILER domain, not Google
   try {
     const retailerUrl = domainToUrl(product.domain);
     const whoisCard = await whoisLookup(retailerUrl);
@@ -273,7 +279,6 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
 }
 
 // ── Check 2: Safety Database (Google Safe Browsing) ─────────────────────
-// Checks the RETAILER domain against Google's threat database.
 
 async function checkSafeBrowsing(product: ProductResult): Promise<FraudCheck> {
   try {
@@ -306,7 +311,6 @@ async function checkSafeBrowsing(product: ProductResult): Promise<FraudCheck> {
 }
 
 // ── Check 3: Community Sentiment (Reddit) ───────────────────────────────
-// Searches Reddit for the RETAILER domain (not Google URL).
 
 async function checkCommunitySentiment(product: ProductResult): Promise<FraudCheck> {
   try {
@@ -356,55 +360,88 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
   }
 }
 
-// ── Check 4: Seller / Review Verification (Yifan's seller-check) ────────
-// For known marketplaces, checks seller within the platform.
-// For direct retailers, analyzes page content and reviews.
-// Uses the RETAILER domain URL.
+// ── Check 4: Brand Impersonation (typosquatting detection) ──────────────
 
-async function checkSellerVerification(product: ProductResult): Promise<FraudCheck> {
+async function checkBrandImpersonation(product: ProductResult): Promise<FraudCheck> {
   try {
     const retailerUrl = domainToUrl(product.domain);
-    const sellerCard = await sellerCheck(retailerUrl);
+    const card = await brandImpersonationCheck(retailerUrl);
 
-    if (sellerCard.severity === "critical") {
+    if (card.severity === "critical") {
       return {
-        name: "Seller Verification",
+        name: "Brand Impersonation",
         status: "failed",
-        detail: sellerCard.title + " — " + sellerCard.detail,
-        severity: 0.8,
-      };
-    }
-
-    if (sellerCard.severity === "warning") {
-      return {
-        name: "Seller Verification",
-        status: "warning",
-        detail: sellerCard.title + " — " + sellerCard.detail,
-        severity: 0.5,
-      };
-    }
-
-    if (sellerCard.severity === "info") {
-      return {
-        name: "Seller Verification",
-        status: "warning",
-        detail: sellerCard.title + " — " + sellerCard.detail,
-        severity: 0.3,
+        detail: `${product.domain}: ${card.title} — ${card.detail}`,
+        severity: 0.95,
       };
     }
 
     return {
-      name: "Seller Verification",
+      name: "Brand Impersonation",
       status: "passed",
-      detail: sellerCard.title + " — " + sellerCard.detail,
-      severity: 0.05,
+      detail: `${product.domain}: ${card.detail}`,
+      severity: 0,
     };
   } catch {
     return {
-      name: "Seller Verification",
+      name: "Brand Impersonation",
       status: "warning",
-      detail: `Could not verify seller at ${product.domain}`,
-      severity: 0.3,
+      detail: `Could not check brand impersonation for ${product.domain}`,
+      severity: 0.2,
+    };
+  }
+}
+
+// ── Check 5: Page Red Flags (urgency, missing policies, payments) ───────
+
+async function checkPageRedFlags(product: ProductResult): Promise<FraudCheck> {
+  try {
+    const retailerUrl = domainToUrl(product.domain);
+    const cards = await scrapeForRedFlags(retailerUrl);
+
+    // Find the worst red flag
+    const critical = cards.find((c) => c.severity === "critical");
+    if (critical) {
+      return {
+        name: "Page Red Flags",
+        status: "failed",
+        detail: `${product.domain}: ${critical.title} — ${critical.detail}`,
+        severity: 0.85,
+      };
+    }
+
+    const warnings = cards.filter((c) => c.severity === "warning");
+    if (warnings.length >= 2) {
+      const details = warnings.map((w) => w.title).join("; ");
+      return {
+        name: "Page Red Flags",
+        status: "failed",
+        detail: `${product.domain}: Multiple red flags — ${details}`,
+        severity: 0.7,
+      };
+    }
+
+    if (warnings.length === 1) {
+      return {
+        name: "Page Red Flags",
+        status: "warning",
+        detail: `${product.domain}: ${warnings[0].title} — ${warnings[0].detail}`,
+        severity: 0.4,
+      };
+    }
+
+    return {
+      name: "Page Red Flags",
+      status: "passed",
+      detail: `${product.domain}: No scam indicators found on page`,
+      severity: 0,
+    };
+  } catch {
+    return {
+      name: "Page Red Flags",
+      status: "warning",
+      detail: `Could not scan page for ${product.domain}`,
+      severity: 0.2,
     };
   }
 }
