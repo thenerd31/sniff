@@ -128,7 +128,38 @@ export interface SearchRequest {
   query?: string;
   image?: string; // base64 encoded
   url?: string;   // product URL to find alternatives for
+  searchQueries?: string[]; // post-refinement query variants
 }
+
+// ── Query Refiner Types ───────────────────────────────────────────────────────
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface RefinementOption {
+  /** Short vivid label, e.g. "The Streetwear Look" */
+  label: string;
+  /** One-line description of this lifestyle/use-case path */
+  description: string;
+  /** Keywords to append to the query if the user picks this option */
+  value: string;
+}
+
+export type RefineResult =
+  | {
+      type: "question";
+      question: string;
+      options: RefinementOption[];
+      internalReasoning: string;
+    }
+  | {
+      type: "ready";
+      refinedQuery: string;
+      searchQueries: string[];
+      internalReasoning: string;
+    };
 
 export type SearchSSEEvent =
   | { event: "narration"; data: { text: string } }

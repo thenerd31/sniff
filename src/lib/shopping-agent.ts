@@ -21,6 +21,11 @@ export interface ShoppingAgentInput {
   /** Free-text description or search query from the user (optional). */
   text?: string;
   /**
+   * Pre-refined search query variants from the Guided Discovery refiner.
+   * When provided these are used directly, bypassing the text/image step.
+   */
+  searchQueries?: string[];
+  /**
    * Base64-encoded image bytes — no data-URI prefix needed.
    * The route strips "data:image/...;base64," before passing here.
    */
@@ -60,68 +65,79 @@ export async function runShoppingAgent(
   input: ShoppingAgentInput,
   writer: SSEWriter
 ): Promise<void> {
-  const { text, imageBase64, imageMediaType } = input;
+  const { text, searchQueries: preRefinedQueries, imageBase64, imageMediaType } = input;
 
-  // ── Step 1: Vision understanding ─────────────────────────────────────────
-  let visionQuery: string | null = null;
+  // ── Step 1: Build search queries ──────────────────────────────────────────
+  // Priority: pre-refined queries from Guided Discovery > vision+text fallback
+  let finalQueries: string[];
 
-  if (imageBase64) {
-    const mediaType = imageMediaType ?? "image/jpeg";
-    const dataUrl = `data:${mediaType};base64,${imageBase64}`;
-
-    const visionResp = await getOpenAI().chat.completions.create({
-      model: VISION_MODEL,
-      max_tokens: 256,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: dataUrl, detail: "low" },
-            },
-            {
-              type: "text",
-              text: [
-                "Identify the product in this image.",
-                "Return ONLY a concise Google Shopping search query",
-                "(brand + model + product type) — no extra prose.",
-                text ? `The user also says: "${text}"` : "",
-              ]
-                .filter(Boolean)
-                .join(" "),
-            },
-          ],
-        },
-      ],
+  if (preRefinedQueries && preRefinedQueries.length > 0) {
+    // Already refined — skip vision step
+    finalQueries = preRefinedQueries;
+    writer.send("narration", {
+      text: `Searching for: "${preRefinedQueries[0]}"`,
     });
+  } else {
+    // Fall back to vision + text
+    let visionQuery: string | null = null;
 
-    visionQuery = visionResp.choices[0]?.message.content?.trim() ?? null;
+    if (imageBase64) {
+      const mediaType = imageMediaType ?? "image/jpeg";
+      const dataUrl = `data:${mediaType};base64,${imageBase64}`;
 
-    if (visionQuery) {
-      writer.send("narration", { text: `Identified: "${visionQuery}"` });
+      const visionResp = await getOpenAI().chat.completions.create({
+        model: VISION_MODEL,
+        max_tokens: 256,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: dataUrl, detail: "low" },
+              },
+              {
+                type: "text",
+                text: [
+                  "Identify the product in this image.",
+                  "Return ONLY a concise Google Shopping search query",
+                  "(brand + model + product type) — no extra prose.",
+                  text ? `The user also says: "${text}"` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+              },
+            ],
+          },
+        ],
+      });
+
+      visionQuery = visionResp.choices[0]?.message.content?.trim() ?? null;
+      if (visionQuery) {
+        writer.send("narration", { text: `Identified: "${visionQuery}"` });
+      }
     }
-  }
 
-  // ── Step 2: Build search query ───────────────────────────────────────────
-  const searchQuery = [visionQuery, text].filter(Boolean).join(" ").trim();
+    const searchQuery = [visionQuery, text].filter(Boolean).join(" ").trim();
 
-  if (!searchQuery) {
-    writer.send("error", {
-      message: "No product description found — provide text or an image.",
+    if (!searchQuery) {
+      writer.send("error", {
+        message: "No product description found — provide text or an image.",
+      });
+      writer.close();
+      return;
+    }
+
+    finalQueries = [searchQuery];
+    writer.send("narration", {
+      text: `Searching Google Shopping for: "${searchQuery}"`,
     });
-    writer.close();
-    return;
   }
 
-  writer.send("narration", {
-    text: `Searching Google Shopping for: "${searchQuery}"`,
-  });
-
-  // ── Step 3: Search (Bright Data SERP → Perplexity fallback) ─────────────
+  // ── Step 2 (formerly Step 3): Search ─────────────────────────────────────
   let results: ProductResult[];
   try {
-    results = await searchProducts([searchQuery]);
+    results = await searchProducts(finalQueries);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     writer.send("error", { message: `Shopping search failed: ${msg}` });

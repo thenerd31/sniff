@@ -91,8 +91,8 @@ export async function semanticDomainCheck(
   console.debug(`[semanticDomainCheck] checking domain="${domain}" for product="${productTitle}"`);
   try {
     const { choices } = await getOpenAI().chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0,
+      model: "gpt-5-mini",
+      temperature: 1,
       max_tokens: 200,
       response_format: { type: "json_object" },
       messages: [
