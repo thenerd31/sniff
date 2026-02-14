@@ -155,17 +155,23 @@ export async function POST(req: NextRequest) {
     try {
       const domain = new URL(url).hostname;
       const cardIds: string[] = [];
+      const userMessage = `Investigate this URL for potential fraud or scams: ${url} (domain: ${domain})`;
+
+      // Accumulate full conversation history for context
+      const conversationHistory: OpenAI.Responses.ResponseInputItem[] = [
+        { role: "user", content: userMessage },
+      ];
 
       // First turn — agent decides what tools to call
       let result = await openai.responses.create({
         model: "gpt-4o",
         instructions: SYSTEM_PROMPT,
-        input: `Investigate this URL for potential fraud or scams: ${url} (domain: ${domain})`,
+        input: conversationHistory,
         tools,
       });
 
       // Agent loop — keep processing until no more tool calls
-      const MAX_ITERATIONS = 10;
+      const MAX_ITERATIONS = 5;
       for (let i = 0; i < MAX_ITERATIONS; i++) {
         const toolCalls = result.output.filter(
           (item) => item.type === "function_call"
@@ -173,13 +179,10 @@ export async function POST(req: NextRequest) {
 
         if (toolCalls.length === 0) break;
 
-        // Execute all tool calls
-        const toolResults: OpenAI.Responses.ResponseInputItem[] = [];
-
-        // Include the function_call items from output
+        // Append function_call items from output to history
         for (const item of result.output) {
           if (item.type === "function_call") {
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call",
               id: item.id,
               call_id: item.call_id,
@@ -189,6 +192,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Execute tool calls and append results to history
         for (const call of toolCalls) {
           if (call.type !== "function_call") continue;
 
@@ -197,13 +201,13 @@ export async function POST(req: NextRequest) {
           try {
             const args = JSON.parse(call.arguments);
             const output = await executeTool(call.name, args, send, cardIds);
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call_output",
               call_id: call.call_id,
               output,
             });
           } catch (error) {
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call_output",
               call_id: call.call_id,
               output: JSON.stringify({
@@ -213,11 +217,11 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Send results back to agent for next iteration
+        // Send full history back for next iteration
         result = await openai.responses.create({
           model: "gpt-4o",
           instructions: SYSTEM_PROMPT,
-          input: toolResults,
+          input: conversationHistory,
           tools,
         });
       }

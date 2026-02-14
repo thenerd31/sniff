@@ -186,15 +186,20 @@ export async function POST(req: NextRequest) {
       const domain = new URL(url).hostname;
       const cardIds: string[] = (existingCards || []).map((c: EvidenceCard) => c.id);
       const systemPrompt = buildDeepenPrompt(focus, existingCards || []);
+      const userMessage = `Dig deeper into "${focus}" for URL: ${url} (domain: ${domain})`;
+
+      const conversationHistory: OpenAI.Responses.ResponseInputItem[] = [
+        { role: "user", content: userMessage },
+      ];
 
       let result = await openai.responses.create({
         model: "gpt-4o",
         instructions: systemPrompt,
-        input: `Dig deeper into "${focus}" for URL: ${url} (domain: ${domain})`,
+        input: conversationHistory,
         tools,
       });
 
-      const MAX_ITERATIONS = 8;
+      const MAX_ITERATIONS = 4;
       for (let i = 0; i < MAX_ITERATIONS; i++) {
         const toolCalls = result.output.filter(
           (item) => item.type === "function_call"
@@ -202,11 +207,9 @@ export async function POST(req: NextRequest) {
 
         if (toolCalls.length === 0) break;
 
-        const toolResults: OpenAI.Responses.ResponseInputItem[] = [];
-
         for (const item of result.output) {
           if (item.type === "function_call") {
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call",
               id: item.id,
               call_id: item.call_id,
@@ -224,13 +227,13 @@ export async function POST(req: NextRequest) {
           try {
             const args = JSON.parse(call.arguments);
             const output = await executeTool(call.name, args, send, cardIds);
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call_output",
               call_id: call.call_id,
               output,
             });
           } catch (error) {
-            toolResults.push({
+            conversationHistory.push({
               type: "function_call_output",
               call_id: call.call_id,
               output: JSON.stringify({
@@ -243,7 +246,7 @@ export async function POST(req: NextRequest) {
         result = await openai.responses.create({
           model: "gpt-4o",
           instructions: systemPrompt,
-          input: toolResults,
+          input: conversationHistory,
           tools,
         });
       }
