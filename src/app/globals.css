@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -75,4 +76,42 @@ html {
   0%, 100% { transform: translate(0, 0) scale(1); }
   33%      { transform: translate(15px, 20px) scale(0.98); }
   66%      { transform: translate(-20px, -25px) scale(1.04); }
+}
+
+/* Pixel art dog sprite run cycle */
+@keyframes dog-bob {
+  0%, 100% { transform: translateY(0px); }
+  25% { transform: translateY(-3px); }
+  50% { transform: translateY(0px); }
+  75% { transform: translateY(-2px); }
+}
+
+@keyframes dog-run {
+  0%, 100% { transform: translateY(0) scaleX(1); }
+  15% { transform: translateY(-4px) scaleX(1.02); }
+  30% { transform: translateY(0) scaleX(0.98); }
+  50% { transform: translateY(-3px) scaleX(1); }
+  65% { transform: translateY(0) scaleX(1.02); }
+  80% { transform: translateY(-4px) scaleX(0.98); }
+}
+
+@keyframes pixel-blink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0; }
+}
+
+/* Pixel button press effect */
+.pixel-btn {
+  image-rendering: pixelated;
+  box-shadow: 0 4px 0 #000;
+  transform: translateY(0);
+  transition: transform 0.05s, box-shadow 0.05s;
+}
+.pixel-btn:active {
+  box-shadow: 0 1px 0 #000;
+  transform: translateY(3px);
+}
+.pixel-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
