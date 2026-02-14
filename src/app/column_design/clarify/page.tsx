@@ -1,53 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ClarifyingQuestions } from "@/components/clarify/ClarifyingQuestions";
 import type { Refinement, ClarifyAnswer } from "@/types/clarify";
 import "./clarify.css";
-
-// ── Mock Data — Simulates /api/clarify response for a vague query ────────
-
-const MOCK_QUERY = "jacket";
-const MOCK_PRODUCT_NAME = "jacket";
-
-const MOCK_REFINEMENTS: Refinement[] = [
-  {
-    label: "Style",
-    options: ["Winter Puffer", "Leather", "Rain Jacket", "Denim"],
-  },
-  {
-    label: "Budget",
-    options: ["Under $50", "$50 – $100", "$100 – $200", "Over $200"],
-  },
-  {
-    label: "Size",
-    options: ["S", "M", "L", "XL"],
-  },
-  {
-    label: "Color",
-    options: ["Black", "Navy", "Olive", "Brown"],
-  },
-  {
-    label: "Brand",
-    options: ["Nike", "North Face", "Patagonia", "No preference"],
-  },
-];
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
 
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function ClarifyTestPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const queryParam = searchParams.get("q") || "jacket";
+
+  const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
   const [refinedQuery, setRefinedQuery] = useState("");
   const [collectedAnswers, setCollectedAnswers] = useState<ClarifyAnswer[]>([]);
+  const [productName, setProductName] = useState(queryParam);
+  const [refinements, setRefinements] = useState<Refinement[]>([]);
+
+  // Call /api/clarify on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/clarify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: queryParam }),
+        });
+        const data = await res.json();
+
+        if (data.ready) {
+          // Query is specific enough — skip straight to board_test
+          router.push(`/board_test?query=${encodeURIComponent(queryParam)}`);
+          return;
+        }
+
+        setProductName(data.productName || queryParam);
+        setRefinements(data.refinements || []);
+        setLoading(false);
+      } catch {
+        // On error, go to board_test with raw query
+        router.push(`/board_test?query=${encodeURIComponent(queryParam)}`);
+      }
+    })();
+  }, [queryParam, router]);
 
   function handleComplete(query: string, answers: ClarifyAnswer[]) {
     setRefinedQuery(query);
     setCollectedAnswers(answers);
     setCompleted(true);
-    console.log("Refined query:", query);
-    console.log("Answers:", answers);
+    // Navigate to board_test after a brief pause to show completion
+    setTimeout(() => {
+      router.push(`/board_test?query=${encodeURIComponent(query)}`);
+    }, 2500);
+  }
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: "linear-gradient(180deg, #87CEEB 0%, #B0E0FF 40%, #C8E6B0 65%, #98D982 70%, #5EAA42 85%, #4A8C34 100%)",
+        }}
+      >
+        <p style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#8B6914" }}>
+          Sniffing...
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -94,7 +118,7 @@ export default function ClarifyTestPage() {
             className="truncate"
             style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#4A3A2A" }}
           >
-            {MOCK_QUERY}
+            {queryParam}
           </span>
         </div>
 
@@ -122,9 +146,9 @@ export default function ClarifyTestPage() {
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         {!completed ? (
           <ClarifyingQuestions
-            query={MOCK_QUERY}
-            refinements={MOCK_REFINEMENTS}
-            productName={MOCK_PRODUCT_NAME}
+            query={queryParam}
+            refinements={refinements}
+            productName={productName}
             onComplete={handleComplete}
           />
         ) : (
@@ -214,7 +238,7 @@ export default function ClarifyTestPage() {
                 color: "#6B7280",
               }}
             >
-              In production, information has been sent to research.
+              Launching quest...
             </p>
           </div>
         )}

@@ -42,106 +42,7 @@ import { useResultsStore } from "@/stores/resultsStore";
 import { ResultsContainer } from "@/components/results/ResultsContainer";
 import "@/styles/results.css";
 
-/* ═══════════════════════════════════════════════════════════════
-   MOCK PRODUCT DATA (for results store seeding)
-   ═══════════════════════════════════════════════════════════════ */
-
-const mockProducts: ProductResult[] = [
-  { id: "p1", title: "Sony WH-1000XM5 Wireless Noise Cancelling Headphones", price: 278.0, currency: "USD", retailer: "Amazon", domain: "amazon.com", url: "https://amazon.com/dp/B09XS7JWHH", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.7, reviewCount: 12453, snippet: "Industry-leading noise cancellation with Auto NC Optimizer" },
-  { id: "p2", title: "Sony WH-1000XM5 Headphones - Brand New Sealed", price: 189.99, currency: "USD", retailer: "BestAudioDeals", domain: "bestaudiodeals.shop", url: "https://bestaudiodeals.shop/sony-xm5", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.9, reviewCount: 23, snippet: "Unbeatable price! Limited stock available" },
-  { id: "p3", title: "Sony WH-1000XM5 Wireless Headphones Black", price: 295.0, currency: "USD", retailer: "Best Buy", domain: "bestbuy.com", url: "https://bestbuy.com/sony-wh1000xm5", imageUrl: "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/6505/6505727_sd.jpg", rating: 4.6, reviewCount: 8921, snippet: "Free shipping, 15-day return policy" },
-  { id: "p4", title: "XM5 Sony Headphones CHEAP!! Free AirPods included", price: 129.99, currency: "USD", retailer: "DealzKing", domain: "dealzking.xyz", url: "https://dealzking.xyz/sony-xm5-bundle", imageUrl: "", rating: 5.0, reviewCount: 3, snippet: "Best deal online! Buy now before it's gone!" },
-  { id: "p5", title: "Sony WH-1000XM5/S Headphones Silver", price: 289.99, currency: "USD", retailer: "B&H Photo", domain: "bhphotovideo.com", url: "https://bhphotovideo.com/sony-xm5", imageUrl: "https://m.media-amazon.com/images/I/41K5m5LHXAL._AC_SL1500_.jpg", rating: 4.7, reviewCount: 3412, snippet: "Authorized Sony dealer, full warranty" },
-  { id: "p6", title: "Sony WH1000XM5 - Refurbished Like New", price: 159.0, currency: "USD", retailer: "QuickFlipElectronics", domain: "quickflipelectronics.co", url: "https://quickflipelectronics.co/xm5", imageUrl: "", rating: 4.2, reviewCount: 8, snippet: "Refurbished with 30-day guarantee" },
-  { id: "p7", title: "Sony WH-1000XM5 Noise Cancelling Wireless", price: 269.0, currency: "USD", retailer: "Walmart", domain: "walmart.com", url: "https://walmart.com/ip/sony-wh1000xm5", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.5, reviewCount: 6234, snippet: "Free next-day delivery on orders over $35" },
-  { id: "p8", title: "SONY XM5 Premium Headphones - LOWEST PRICE GUARANTEED", price: 99.99, currency: "USD", retailer: "ElectroSavvyDeals", domain: "electrosavvydeals.net", url: "https://electrosavvydeals.net/xm5-deal", imageUrl: "", rating: 4.8, reviewCount: 7, snippet: "We beat any price! 100% satisfaction guaranteed!" },
-];
-
-const mockChecks: Record<string, FraudCheck[]> = {
-  p1: [
-    { name: "Retailer Reputation", status: "passed", detail: "Amazon is a globally trusted marketplace with buyer protection.", severity: 0.05 },
-    { name: "Safety Database", status: "passed", detail: "No flags in Google Safe Browsing or PhishTank databases.", severity: 0.02 },
-    { name: "Community Sentiment", status: "passed", detail: "Overwhelmingly positive sentiment across Reddit and forums.", severity: 0.08 },
-    { name: "Brand Impersonation", status: "passed", detail: "Sold and shipped by Amazon.com. Verified business entity.", severity: 0.03 },
-  ],
-  p2: [
-    { name: "Retailer Reputation", status: "warning", detail: "Domain registered 12 days ago. No established reputation.", severity: 0.72 },
-    { name: "Safety Database", status: "failed", detail: "Domain flagged by 2 community scam databases.", severity: 0.85 },
-    { name: "Community Sentiment", status: "failed", detail: "Multiple Reddit posts warning about this domain.", severity: 0.9 },
-    { name: "Brand Impersonation", status: "failed", detail: "No business registration found. WHOIS privacy enabled.", severity: 0.88 },
-  ],
-  p3: [
-    { name: "Retailer Reputation", status: "passed", detail: "Best Buy is a Fortune 100 company with 1,000+ stores.", severity: 0.03 },
-    { name: "Safety Database", status: "passed", detail: "Clean across all safety databases.", severity: 0.01 },
-    { name: "Community Sentiment", status: "passed", detail: "Strong positive reputation in consumer electronics.", severity: 0.05 },
-    { name: "Brand Impersonation", status: "passed", detail: "Publicly traded company (NYSE: BBY). Verified entity.", severity: 0.02 },
-  ],
-  p4: [
-    { name: "Retailer Reputation", status: "failed", detail: "Domain registered 3 days ago via anonymous registrar.", severity: 0.95 },
-    { name: "Safety Database", status: "failed", detail: "Flagged by Google Safe Browsing as deceptive.", severity: 0.98 },
-    { name: "Community Sentiment", status: "failed", detail: "Zero legitimate mentions. Suspicious social media ads only.", severity: 0.92 },
-    { name: "Brand Impersonation", status: "failed", detail: "No business entity. Uses .xyz TLD common in scam sites.", severity: 0.96 },
-  ],
-  p5: [
-    { name: "Retailer Reputation", status: "passed", detail: "B&H Photo is a trusted NYC-based electronics retailer since 1973.", severity: 0.04 },
-    { name: "Safety Database", status: "passed", detail: "No flags in any safety databases.", severity: 0.01 },
-    { name: "Community Sentiment", status: "passed", detail: "Highly recommended by photography and audio communities.", severity: 0.06 },
-    { name: "Brand Impersonation", status: "passed", detail: "Authorized Sony dealer. Verified business with physical store.", severity: 0.03 },
-  ],
-  p6: [
-    { name: "Retailer Reputation", status: "warning", detail: "Domain registered 45 days ago. Limited track record.", severity: 0.55 },
-    { name: "Safety Database", status: "warning", detail: "Not flagged, but not enough data for confidence.", severity: 0.4 },
-    { name: "Community Sentiment", status: "warning", detail: "One neutral Reddit mention. No established presence.", severity: 0.5 },
-    { name: "Brand Impersonation", status: "warning", detail: "Small business registration found, but no physical address.", severity: 0.48 },
-  ],
-  p7: [
-    { name: "Retailer Reputation", status: "passed", detail: "Walmart is the world's largest retailer with comprehensive buyer protection.", severity: 0.04 },
-    { name: "Safety Database", status: "passed", detail: "No flags across any safety databases.", severity: 0.01 },
-    { name: "Community Sentiment", status: "passed", detail: "Well-known retailer with strong consumer trust.", severity: 0.06 },
-    { name: "Brand Impersonation", status: "passed", detail: "Fortune 1 company (NYSE: WMT). Verified entity.", severity: 0.02 },
-  ],
-  p8: [
-    { name: "Retailer Reputation", status: "failed", detail: "Domain registered 8 days ago. No online presence before this week.", severity: 0.88 },
-    { name: "Safety Database", status: "failed", detail: "Flagged by PhishTank and community scam reports.", severity: 0.91 },
-    { name: "Community Sentiment", status: "failed", detail: "Reddit scam alert thread with 200+ upvotes.", severity: 0.87 },
-    { name: "Brand Impersonation", status: "failed", detail: "Fake address listed. No business registration found.", severity: 0.93 },
-  ],
-};
-
-const mockVerdicts: Record<string, { verdict: ProductVerdict; trustScore: number }> = {
-  p1: { verdict: "trusted", trustScore: 96 },
-  p2: { verdict: "danger", trustScore: 15 },
-  p3: { verdict: "trusted", trustScore: 94 },
-  p4: { verdict: "danger", trustScore: 5 },
-  p5: { verdict: "trusted", trustScore: 93 },
-  p6: { verdict: "caution", trustScore: 52 },
-  p7: { verdict: "trusted", trustScore: 92 },
-  p8: { verdict: "danger", trustScore: 8 },
-};
-
-function seedResultsStore() {
-  const store = useResultsStore.getState();
-  store.reset();
-  let delay = 0;
-  mockProducts.forEach((product) => {
-    delay += 80;
-    setTimeout(() => useResultsStore.getState().addProduct(product), delay);
-    const checks = mockChecks[product.id] || [];
-    checks.forEach((check) => {
-      delay += 40;
-      setTimeout(() => useResultsStore.getState().addFraudCheck(product.id, check), delay);
-    });
-    const verdict = mockVerdicts[product.id];
-    if (verdict) {
-      delay += 60;
-      setTimeout(() => useResultsStore.getState().setVerdict(product.id, verdict.verdict, verdict.trustScore), delay);
-    }
-  });
-  setTimeout(() => {
-    useResultsStore.getState().setBestPick("p1");
-    useResultsStore.getState().setPhase("two-columns");
-  }, delay + 200);
-}
+/* mock data removed — using real /api/search SSE */
 
 /* ═══════════════════════════════════════════════════════════════
    PIXEL FONT HELPER
@@ -149,166 +50,7 @@ function seedResultsStore() {
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
 
-/* ═══════════════════════════════════════════════════════════════
-   PSEUDO DATA
-   ═══════════════════════════════════════════════════════════════ */
-
-interface DemoEvent {
-  delay: number;
-  event: "card" | "connection" | "threat_score" | "log" | "done";
-  data: any;
-}
-
-const DEMO_EVENTS: DemoEvent[] = [
-  { delay: 400, event: "log", data: { text: "Starting investigation..." } },
-  { delay: 600, event: "log", data: { text: "Resolving domain WHOIS records..." } },
-  {
-    delay: 800,
-    event: "card",
-    data: {
-      id: "card-1",
-      type: "domain",
-      severity: "critical",
-      title: "Domain registered 6 days ago",
-      detail: "Registered Feb 7, 2026 via NameCheap. Registrant country: Nigeria. Domain age < 30 days is a strong fraud indicator.",
-      source: "WHOIS Lookup",
-      confidence: 0.92,
-      connections: [],
-      metadata: {},
-    },
-  },
-  { delay: 500, event: "log", data: { text: "Analyzing SSL certificate chain..." } },
-  {
-    delay: 1000,
-    event: "card",
-    data: {
-      id: "card-2",
-      type: "ssl",
-      severity: "critical",
-      title: "SSL certificate mismatch",
-      detail: "Certificate issued to *.cheaphost.xyz — a different domain. Strongly suggests phishing or impersonation.",
-      source: "SSL Analysis",
-      confidence: 0.95,
-      connections: ["card-1"],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "hero", to: "card-2" } },
-  { delay: 300, event: "log", data: { text: "Searching Reddit for scam reports..." } },
-  { delay: 600, event: "log", data: { text: "Found 12 matching threads in r/Scams..." } },
-  {
-    delay: 800,
-    event: "card",
-    data: {
-      id: "card-3",
-      type: "scam_report",
-      severity: "critical",
-      title: "12 scam reports on Reddit",
-      detail: 'Multiple users in r/Scams report this domain. Top post: "Lost $200, never received product." — 847 upvotes.',
-      source: "Reddit Search",
-      confidence: 0.88,
-      connections: ["card-1"],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-2", to: "card-3" } },
-  { delay: 300, event: "log", data: { text: "Scanning page for deceptive patterns..." } },
-  {
-    delay: 900,
-    event: "card",
-    data: {
-      id: "card-4",
-      type: "alert",
-      severity: "warning",
-      title: "No return policy found",
-      detail: "No visible return or refund policy. Legitimate retailers are legally required to display this.",
-      source: "Page Analysis",
-      confidence: 0.78,
-      connections: [],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-3", to: "card-4" } },
-  { delay: 400, event: "log", data: { text: "Detecting urgency manipulation tactics..." } },
-  {
-    delay: 800,
-    event: "card",
-    data: {
-      id: "card-5",
-      type: "alert",
-      severity: "warning",
-      title: "Fake urgency tactics detected",
-      detail: 'Countdown timer and "Only 2 left!" pressure language. Common social engineering tactics.',
-      source: "Page Analysis",
-      confidence: 0.82,
-      connections: ["card-4"],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-4", to: "card-5" } },
-  { delay: 300, event: "log", data: { text: "Querying Google Safe Browsing API..." } },
-  {
-    delay: 700,
-    event: "card",
-    data: {
-      id: "card-6",
-      type: "domain",
-      severity: "safe",
-      title: "Google Safe Browsing: not flagged",
-      detail: "Not yet in Google's database. New scam sites often haven't been reported — absence of flag ≠ safety.",
-      source: "Google Safe Browsing",
-      confidence: 0.6,
-      connections: [],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-5", to: "card-6" } },
-  { delay: 300, event: "log", data: { text: "Searching corporate registries..." } },
-  { delay: 500, event: "log", data: { text: 'Looking up "LuxDeals Global Ltd"...' } },
-  {
-    delay: 900,
-    event: "card",
-    data: {
-      id: "card-7",
-      type: "business",
-      severity: "critical",
-      title: "No business registration found",
-      detail: '"LuxDeals Global Ltd" returns zero results in corporate registries. Likely a fictitious entity.',
-      source: "Business Registry",
-      confidence: 0.85,
-      connections: ["card-1", "card-3"],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-6", to: "card-7" } },
-  { delay: 300, event: "log", data: { text: "Running reverse image search on team photos..." } },
-  {
-    delay: 800,
-    event: "card",
-    data: {
-      id: "card-8",
-      type: "seller",
-      severity: "warning",
-      title: "Stock photos for team page",
-      detail: "All 4 'team member' photos are Shutterstock stock images. No real team identified.",
-      source: "Image Analysis",
-      confidence: 0.9,
-      connections: ["card-7"],
-      metadata: {},
-    },
-  },
-  { delay: 400, event: "connection", data: { from: "card-7", to: "card-8" } },
-  { delay: 300, event: "log", data: { text: "Calculating final threat score..." } },
-  { delay: 800, event: "threat_score", data: { score: 94 } },
-  { delay: 400, event: "log", data: { text: "!! CRITICAL — threat score 94/100" } },
-  {
-    delay: 600,
-    event: "done",
-    data: {
-      summary: "High risk of fraud. Domain 6 days old, SSL mismatch, 12 Reddit reports, no business registration. Threat score: 94/100. DO NOT proceed.",
-    },
-  },
-];
+/* DEMO_EVENTS removed — using real /api/search SSE */
 
 /* ═══════════════════════════════════════════════════════════════
    PIXEL SEVERITY COLORS
@@ -1065,7 +807,9 @@ const nodeTypes: NodeTypes = {
 
 export default function BoardPage() {
   const searchParams = useSearchParams();
-  const targetUrl = searchParams.get("url") || "https://www.example.com";
+  const query = searchParams.get("query") || "";
+  const targetUrl = searchParams.get("url") || "";
+  const displayLabel = query || targetUrl || "https://www.example.com";
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -1136,7 +880,7 @@ export default function BoardPage() {
       id: "hero",
       type: "heroCard",
       position: { x: 0, y: NODE_Y - 20 },
-      data: { url: targetUrl, threatScore: 0, status: "investigating", summary: "" },
+      data: { url: displayLabel, threatScore: 0, status: "investigating", summary: "" },
       draggable: true,
     };
     const dogNode: Node = {
@@ -1150,116 +894,214 @@ export default function BoardPage() {
       zIndex: 1000,
     };
     setNodes([heroNode, dogNode]);
-  }, [targetUrl, setNodes]);
+  }, [displayLabel, setNodes]);
 
   useEffect(() => {
     if (hasStarted.current) return;
     hasStarted.current = true;
+    if (!query && !targetUrl) return;
 
-    let cancelled = false;
+    const store = useResultsStore.getState();
+    store.reset();
 
-    async function runDemo() {
-      for (const evt of DEMO_EVENTS) {
-        if (cancelled) break;
-        await new Promise((r) => setTimeout(r, evt.delay));
-        if (cancelled) break;
+    const abortController = new AbortController();
 
-        switch (evt.event) {
-          case "log": {
-            addLog(evt.data.text);
-            break;
+    async function runRealSearch() {
+      try {
+        const body: Record<string, string> = {};
+        if (query) body.query = query;
+        else if (targetUrl) body.url = targetUrl;
+
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          addLog("Error: Search failed");
+          setStatus("complete");
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              handleSSEEvent(parsed.event, parsed.data);
+            } catch { /* skip unparseable */ }
           }
-          case "card": {
-            const card = evt.data as EvidenceCard;
-            const currentIndex = cardCountRef.current;
-            const pos = getLinearPosition(currentIndex);
-            cardCountRef.current++;
-            addLog(`Evidence found: ${card.title}`);
-
-            // Move the dog node to the new card's position
-            const dogPos = getDogPosition(card.id, currentIndex);
-            setNodes((prev) =>
-              prev.map((n) =>
-                n.id === DOG_NODE_ID
-                  ? { ...n, position: dogPos, data: { isMoving: true } }
-                  : n
-              )
-            );
-            // Switch to idle/sniffing after the dog arrives (~800ms)
-            setTimeout(() => {
-              setNodes((prev) =>
-                prev.map((n) =>
-                  n.id === DOG_NODE_ID ? { ...n, data: { isMoving: false } } : n
-                )
-              );
-            }, 800);
-
-            const newNode: Node = {
-              id: card.id,
-              type: "evidenceCard",
-              position: pos,
-              data: { ...card, isNew: true },
-            };
-            setNodes((prev) => [...prev, newNode]);
-
-            const sourceId = prevCardIdRef.current;
-            setEdges((prev) => [
-              ...prev,
-              {
-                id: `${sourceId}-${card.id}`,
-                source: sourceId,
-                target: card.id,
-                type: "straight",
-                animated: true,
-                style: { stroke: "#1A1A1A", strokeWidth: 3 },
-              },
-            ]);
-            prevCardIdRef.current = card.id;
-
-            setTimeout(() => {
-              setNodes((prev) =>
-                prev.map((n) =>
-                  n.id === card.id ? { ...n, data: { ...n.data, isNew: false } } : n
-                )
-              );
-            }, 2500);
-            break;
-          }
-          case "connection": {
-            break;
-          }
-          case "threat_score": {
-            const score = evt.data.score;
-            setThreatScore(score);
-            setNodes((prev) =>
-              prev.map((n) =>
-                n.id === "hero" ? { ...n, data: { ...n.data, threatScore: score } } : n
-              )
-            );
-            break;
-          }
-          case "done": {
-            setStatus("complete");
-            setSummary(evt.data.summary);
-            addLog("Quest complete!");
-            setNodes((prev) =>
-              prev.map((n) =>
-                n.id === "hero"
-                  ? { ...n, data: { ...n.data, status: "complete", summary: evt.data.summary } }
-                  : n
-              )
-            );
-            // Seed the results store with mock product data
-            seedResultsStore();
-            break;
-          }
+        }
+      } catch (err) {
+        if (!abortController.signal.aborted) {
+          addLog("Connection lost");
+          setStatus("complete");
         }
       }
     }
 
-    runDemo();
-    return () => { cancelled = true; };
-  }, [setNodes, setEdges]);
+    function handleSSEEvent(event: string, data: any) {
+      const store = useResultsStore.getState();
+
+      switch (event) {
+        case "narration":
+          addLog(data.text);
+          break;
+
+        case "product": {
+          const product = data as ProductResult;
+          store.addProduct(product);
+
+          const currentIndex = cardCountRef.current;
+          const pos = getLinearPosition(currentIndex);
+          cardCountRef.current++;
+          addLog(`Found: $${product.price} at ${product.retailer}`);
+
+          // Move dog to new card
+          const dogPos = getDogPosition(product.id, currentIndex);
+          setNodes((prev) =>
+            prev.map((n) =>
+              n.id === DOG_NODE_ID
+                ? { ...n, position: dogPos, data: { isMoving: true } }
+                : n
+            )
+          );
+          setTimeout(() => {
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === DOG_NODE_ID ? { ...n, data: { isMoving: false } } : n
+              )
+            );
+          }, 800);
+
+          // Create evidence card node for this product
+          const card: EvidenceCard = {
+            id: product.id,
+            type: "price",
+            severity: "info",
+            title: `$${product.price.toFixed(2)} — ${product.retailer}`,
+            detail: product.title.slice(0, 100),
+            source: product.domain,
+            confidence: 0.5,
+            connections: [],
+            metadata: {},
+          };
+
+          const newNode: Node = {
+            id: product.id,
+            type: "evidenceCard",
+            position: pos,
+            data: { ...card, isNew: true },
+          };
+          setNodes((prev) => [...prev, newNode]);
+
+          const sourceId = prevCardIdRef.current;
+          setEdges((prev) => [
+            ...prev,
+            {
+              id: `${sourceId}-${product.id}`,
+              source: sourceId,
+              target: product.id,
+              type: "straight",
+              animated: true,
+              style: { stroke: "#1A1A1A", strokeWidth: 3 },
+            },
+          ]);
+          prevCardIdRef.current = product.id;
+
+          setTimeout(() => {
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === product.id ? { ...n, data: { ...n.data, isNew: false } } : n
+              )
+            );
+          }, 2500);
+          break;
+        }
+
+        case "fraud_check": {
+          const { productId, check } = data;
+          store.addFraudCheck(productId, check);
+          addLog(`${check.name}: ${check.status} — ${productId.slice(0, 8)}`);
+
+          // Update node severity based on check results
+          if (check.status === "failed") {
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === productId
+                  ? { ...n, data: { ...n.data, severity: "critical" as CardSeverity } }
+                  : n
+              )
+            );
+          }
+          break;
+        }
+
+        case "verdict": {
+          const { productId, verdict, trustScore: ts } = data;
+          store.setVerdict(productId, verdict, ts);
+          addLog(`Verdict: ${verdict.toUpperCase()} (${ts}/100) — ${productId.slice(0, 8)}`);
+
+          // Color the node based on verdict
+          const sev: CardSeverity = verdict === "trusted" ? "safe" : verdict === "danger" ? "critical" : "warning";
+          setNodes((prev) =>
+            prev.map((n) =>
+              n.id === productId
+                ? { ...n, data: { ...n.data, severity: sev, confidence: ts / 100 } }
+                : n
+            )
+          );
+          break;
+        }
+
+        case "all_products":
+          addLog(`${data.count} products found. Running security checks...`);
+          break;
+
+        case "best_pick":
+          store.setBestPick(data.productId);
+          addLog("Best deal identified!");
+          break;
+
+        case "done": {
+          store.setDoneSummary(data.summary);
+          store.setPhase("two-columns");
+          setStatus("complete");
+          setSummary(data.summary);
+          addLog("Quest complete!");
+          setNodes((prev) =>
+            prev.map((n) =>
+              n.id === "hero"
+                ? { ...n, data: { ...n.data, status: "complete", summary: data.summary, threatScore: 0 } }
+                : n
+            )
+          );
+          break;
+        }
+
+        case "error":
+          addLog(`!! ERROR: ${data.message}`);
+          setStatus("complete");
+          break;
+      }
+    }
+
+    runRealSearch();
+    return () => { abortController.abort(); };
+  }, [query, targetUrl, setNodes, setEdges]);
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
@@ -1291,7 +1133,7 @@ export default function BoardPage() {
         >
           <Search className="h-3 w-3 shrink-0" style={{ color: "#8B6914" }} />
           <span className="truncate" style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#4A3A2A" }}>
-            {targetUrl}
+            {displayLabel}
           </span>
         </div>
 
