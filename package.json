@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:pipeline": "tsx scripts/test-pipeline.ts"
+    "test:pipeline": "tsx scripts/test-pipeline.ts",
+    "test:api": "tsx scripts/test-api.ts"
   },
   "dependencies": {
     "@browserbasehq/sdk": "^2.6.0",
