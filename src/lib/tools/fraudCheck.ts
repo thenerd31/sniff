@@ -112,8 +112,9 @@ export async function runFraudChecks(
   );
 
   // ── Price anomaly detection ───────────────────────────────────────
-  // Compare this product's price against the highest trusted-retailer price.
-  // If an unknown site is way cheaper than Best Buy/Amazon, it's suspicious.
+  // Low price ALONE is not a red flag — resale platforms legitimately sell cheaper.
+  // Price only matters when COMBINED with other red flags (no Reddit, hidden WHOIS).
+  // Logic: price amplifies existing suspicion, it doesn't create it.
   if (allProducts && allProducts.length >= 3 && !isHighAuthorityDomain(product.domain)) {
     const trustedPrices = allProducts
       .filter((p) => p.price > 0 && isHighAuthorityDomain(p.domain))
@@ -121,16 +122,20 @@ export async function runFraudChecks(
       .sort((a, b) => a - b);
 
     if (trustedPrices.length >= 1) {
-      // Use the highest trusted price as the "retail" benchmark
-      // (Best Buy at $229 is more representative than eBay used at $39)
       const retailPrice = trustedPrices[trustedPrices.length - 1];
       const pctBelow = ((retailPrice - product.price) / retailPrice) * 100;
 
-      if (pctBelow >= 50) {
+      // Count how many OTHER checks already flagged this site
+      const otherRedFlags = checks.filter(
+        (c) => c.name !== "Retailer Reputation" && (c.status === "failed" || (c.status === "warning" && c.severity >= 0.5))
+      ).length;
+
+      if (pctBelow >= 50 && otherRedFlags >= 1) {
+        // Cheap price + at least one other red flag = scam pattern
         const priceCheck: FraudCheck = {
           name: "Retailer Reputation",
           status: "failed",
-          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — too good to be true`,
+          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — too good to be true on an unverified site`,
           severity: 0.95,
         };
         const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
@@ -144,25 +149,23 @@ export async function runFraudChecks(
           checks.push(priceCheck);
         }
         onCheck(product.id, priceCheck);
-      } else if (pctBelow >= 30) {
-        // Moderately suspicious — flag but don't fail
-        const priceWarning: FraudCheck = {
+      } else if (pctBelow >= 50 && otherRedFlags === 0) {
+        // Cheap but site otherwise looks fine — just note it, don't penalize
+        const priceNote: FraudCheck = {
           name: "Retailer Reputation",
           status: "warning",
-          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — unusually cheap`,
-          severity: 0.6,
+          detail: `Price $${product.price.toFixed(2)} is ${Math.round(pctBelow)}% below retail ($${retailPrice.toFixed(2)}) — could be used/refurbished`,
+          severity: 0.2, // mild — site passed other checks
         };
         const repIdx = checks.findIndex((c) => c.name === "Retailer Reputation");
         if (repIdx >= 0) {
-          const original = checks[repIdx];
-          if (priceWarning.severity > original.severity) {
-            checks[repIdx] = {
-              ...priceWarning,
-              detail: `${priceWarning.detail}. ${original.detail}`,
-            };
+          // Don't override if existing check is already worse
+          if (priceNote.severity > checks[repIdx].severity) {
+            const original = checks[repIdx];
+            checks[repIdx] = { ...priceNote, detail: `${priceNote.detail}. ${original.detail}` };
           }
         }
-        onCheck(product.id, priceWarning);
+        onCheck(product.id, priceNote);
       }
     }
   }
