@@ -32,7 +32,8 @@ export function HorizontalResultsList({
   products,
   bestPickId,
 }: HorizontalResultsListProps) {
-  const { savedItems, toggleSave } = useResultsStore();
+  const savedItems = useResultsStore((s) => s.savedItems);
+  const toggleSave = useResultsStore((s) => s.toggleSave);
 
   // Sort by price ascending
   const sorted = [...products].sort((a, b) => a.price - b.price);

@@ -2,26 +2,27 @@
 
 import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useResultsStore } from "@/stores/resultsStore";
+import {
+  useResultsStore,
+  useTrusted,
+  useFlagged,
+  useSortedTrusted,
+} from "@/stores/resultsStore";
 import { TwoColumnLayout } from "./TwoColumnLayout";
 import { BlackHoleWipe } from "./BlackHoleWipe";
 import { ShuffleSort } from "./ShuffleSort";
 import { HorizontalResultsList } from "./HorizontalResultsList";
 
 export function ResultsContainer() {
-  const {
-    phase,
-    setPhase,
-    getTrusted,
-    getFlagged,
-    getSortedTrusted,
-    bestPickId,
-  } = useResultsStore();
+  const phase = useResultsStore((s) => s.phase);
+  const setPhase = useResultsStore((s) => s.setPhase);
+  const bestPickId = useResultsStore((s) => s.bestPickId);
 
-  const trusted = getTrusted();
-  const flagged = getFlagged();
-  const sortedTrusted = getSortedTrusted();
+  const trusted = useTrusted();
+  const flagged = useFlagged();
+  const sortedTrusted = useSortedTrusted();
 
+  // Seamless chain: eliminate → wipe → shuffle → final list
   const handleEliminateFlagged = useCallback(() => {
     setPhase("wiping");
   }, [setPhase]);
@@ -39,18 +40,19 @@ export function ResultsContainer() {
   return (
     <motion.section
       className="w-full px-6 md:px-12 lg:px-20 py-10"
-      initial={{ y: 100, opacity: 0 }}
+      initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 200, damping: 25 }}
+      transition={{ type: "spring" as const, stiffness: 180, damping: 22, delay: 0.1 }}
     >
-      <AnimatePresence mode="wait">
+      {/* Two Columns phase — uses AnimatePresence for exit animation */}
+      <AnimatePresence>
         {phase === "two-columns" && (
           <motion.div
             key="two-columns"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20, transition: { duration: 0.25 } }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <TwoColumnLayout
               trusted={trusted}
@@ -59,51 +61,39 @@ export function ResultsContainer() {
             />
           </motion.div>
         )}
-
-        {phase === "wiping" && (
-          <motion.div
-            key="wiping"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <BlackHoleWipe
-              flaggedProducts={flagged}
-              onComplete={handleWipeComplete}
-            />
-          </motion.div>
-        )}
-
-        {phase === "shuffling" && (
-          <motion.div
-            key="shuffling"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ShuffleSort
-              products={trusted}
-              onComplete={handleShuffleComplete}
-            />
-          </motion.div>
-        )}
-
-        {phase === "final-list" && (
-          <motion.div
-            key="final-list"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            <HorizontalResultsList
-              products={sortedTrusted}
-              bestPickId={bestPickId}
-            />
-          </motion.div>
-        )}
       </AnimatePresence>
+
+      {/* BlackHoleWipe — pure CSS animations, no Framer Motion needed for animation.
+          Rendered directly (not inside AnimatePresence) to avoid interference. */}
+      {phase === "wiping" && (
+        <BlackHoleWipe
+          flaggedProducts={flagged}
+          onComplete={handleWipeComplete}
+        />
+      )}
+
+      {/* ShuffleSort — pure CSS animations */}
+      {phase === "shuffling" && (
+        <ShuffleSort
+          products={trusted}
+          onComplete={handleShuffleComplete}
+        />
+      )}
+
+      {/* Final Horizontal List */}
+      {phase === "final-list" && (
+        <motion.div
+          key="final-list"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <HorizontalResultsList
+            products={sortedTrusted}
+            bestPickId={bestPickId}
+          />
+        </motion.div>
+      )}
     </motion.section>
   );
 }
