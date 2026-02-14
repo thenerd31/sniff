@@ -19,4 +19,4 @@ export interface ClarifyAnswer {
   value: string;
 }
 
-export type ClarifyPhase = "loading" | "asking" | "completing" | "done";
+export type ClarifyPhase = "loading" | "asking" | "reviewing" | "completing" | "done";

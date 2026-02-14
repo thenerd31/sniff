@@ -23,6 +23,14 @@ const MOCK_REFINEMENTS: Refinement[] = [
     label: "Size",
     options: ["S", "M", "L", "XL"],
   },
+  {
+    label: "Color",
+    options: ["Black", "Navy", "Olive", "Brown"],
+  },
+  {
+    label: "Brand",
+    options: ["Nike", "North Face", "Patagonia", "No preference"],
+  },
 ];
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
