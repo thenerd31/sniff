@@ -1,0 +1,253 @@
+/* clarify.css — Animations for the clarifying questions flow
+   All pure CSS @keyframes, immune to React Compiler */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────── */
+:root {
+  --pixel-bg: #FFF8E8;
+  --pixel-border: #1A1A1A;
+  --pixel-gold: #FFD700;
+  --pixel-gold-dark: #8B6914;
+  --pixel-brand: #FF6B00;
+  --pixel-surface: #D4C4A0;
+  --pixel-dirt: #C4A46C;
+}
+
+/* ── Question Card Enter / Exit ───────────────────────────── */
+
+@keyframes clarify-card-enter {
+  0% {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes clarify-card-exit {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50px);
+    opacity: 0;
+  }
+}
+
+/* ── Option Button Pop-In ─────────────────────────────────── */
+
+@keyframes option-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── Option Selected Bounce ───────────────────────────────── */
+
+@keyframes option-selected {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ── "Last Question!" Badge Bounce ────────────────────────── */
+
+@keyframes badge-bounce {
+  0% {
+    transform: translateY(-15px) scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(3px) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── Completion Popup ─────────────────────────────────────── */
+
+@keyframes completion-enter {
+  0% {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes completion-overlay-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ── Pixel Progress Bar Fill ──────────────────────────────── */
+
+@keyframes progress-fill {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+
+/* ── Typing Cursor Blink ──────────────────────────────────── */
+
+@keyframes typing-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ── Dog Celebrate ────────────────────────────────────────── */
+
+@keyframes dog-celebrate {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-12px) rotate(-5deg); }
+  60% { transform: translateY(-4px) rotate(3deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+/* ── Dog Sniff (head bob with sniff lines) ────────────────── */
+
+@keyframes dog-sniff {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-2deg); }
+  50% { transform: translateY(0px) rotate(0deg); }
+  75% { transform: translateY(-2px) rotate(2deg); }
+}
+
+/* ── Sniff Lines Fade ─────────────────────────────────────── */
+
+@keyframes sniff-lines {
+  0%, 100% { opacity: 0.3; transform: translateX(0); }
+  50% { opacity: 0.8; transform: translateX(3px); }
+}
+
+/* ── Gentle Float for Question Context ────────────────────── */
+
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ── Progress Segment Flash ───────────────────────────────── */
+
+@keyframes segment-flash {
+  0% { opacity: 0.4; }
+  50% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* ── Pixel Button Styles ──────────────────────────────────── */
+
+.clarify-pixel-btn {
+  image-rendering: pixelated;
+  border: 3px solid #1A1A1A;
+  background: #FFF8E8;
+  box-shadow: 0 4px 0 #1A1A1A;
+  transform: translateY(0);
+  transition: transform 0.05s, box-shadow 0.05s, background 0.1s, color 0.1s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.clarify-pixel-btn:hover {
+  background: #FFD700;
+}
+
+.clarify-pixel-btn:active {
+  box-shadow: 0 1px 0 #1A1A1A;
+  transform: translateY(3px);
+}
+
+.clarify-pixel-btn.selected {
+  background: #FF6B00;
+  color: #FFFFFF;
+  box-shadow: 0 2px 0 #CC5500;
+}
+
+.clarify-pixel-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ── Pixel Frame ──────────────────────────────────────────── */
+
+.pixel-frame {
+  border: 4px solid #1A1A1A;
+  background: #FFF8E8;
+  box-shadow: 4px 4px 0 #8B6914;
+  image-rendering: pixelated;
+}
+
+/* ── Spectrum / Slider Pixel Styling ──────────────────────── */
+
+.pixel-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  background: #D4C4A0;
+  border: 3px solid #1A1A1A;
+  outline: none;
+  cursor: pointer;
+}
+
+.pixel-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 24px;
+  background: #FF6B00;
+  border: 3px solid #1A1A1A;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #CC5500;
+}
+
+.pixel-slider::-moz-range-thumb {
+  width: 20px;
+  height: 24px;
+  background: #FF6B00;
+  border: 3px solid #1A1A1A;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #CC5500;
+  border-radius: 0;
+}
+
+/* ── Question Counter Dots ────────────────────────────────── */
+
+.question-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #1A1A1A;
+  background: #D4C4A0;
+  transition: background 0.2s;
+}
+
+.question-dot.active {
+  background: #FF6B00;
+}
+
+.question-dot.completed {
+  background: #FFD700;
+}
