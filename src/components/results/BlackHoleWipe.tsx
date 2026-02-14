@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, useAnimate } from "framer-motion";
 import type { ProductWithVerdict } from "@/types";
 
 interface BlackHoleWipeProps {
@@ -9,78 +8,66 @@ interface BlackHoleWipeProps {
   onComplete: () => void;
 }
 
+/**
+ * BlackHoleWipe — Pure CSS @keyframes animation (no Framer Motion animate prop).
+ *
+ * Timeline (all via CSS animation-delay, immune to React Compiler):
+ *   0.0s → Cards spring from center to circle positions (bh-card-appear)
+ *   0.6s → Singularity starts growing (bh-singularity-grow)
+ *   1.0s → Cards spiral from circle to center (bh-card-spiral), staggered
+ *   2.2s → Singularity collapses (bh-singularity-collapse)
+ *   2.6s → onComplete fires
+ */
 export function BlackHoleWipe({ flaggedProducts, onComplete }: BlackHoleWipeProps) {
-  const [scope, animate] = useAnimate();
-  const hasRun = useRef(false);
+  const completeFired = useRef(false);
 
   useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
+    const timer = setTimeout(() => {
+      if (!completeFired.current) {
+        completeFired.current = true;
+        onComplete();
+      }
+    }, 2600);
+    return () => clearTimeout(timer);
+  }, [onComplete]);
 
-    const runAnimation = async () => {
-      // Phase 1: Singularity scales in (0 → 0.3s)
-      await animate(
-        ".singularity",
-        { scale: [0, 1], opacity: [0, 1] },
-        { duration: 0.3, ease: "easeOut" }
-      );
-
-      // Phase 2: Cards spiral into center (0.3 → 1.8s)
-      const cards = document.querySelectorAll(".wipe-card");
-      const cardAnimations = Array.from(cards).map((card, i) =>
-        animate(
-          card,
-          {
-            x: 0,
-            y: 0,
-            scale: 0,
-            rotate: 360,
-            opacity: 0,
-            filter: "blur(8px)",
-          },
-          {
-            duration: 1.2,
-            delay: i * 0.08,
-            ease: [0.55, 0, 0.1, 1], // aggressive inward pull
-          }
-        )
-      );
-
-      await Promise.all(cardAnimations);
-
-      // Phase 3: Singularity pulses then collapses (1.8 → 2.3s)
-      await animate(
-        ".singularity",
-        { scale: [1, 1.3, 0], opacity: [1, 1, 0] },
-        { duration: 0.5, ease: "easeInOut" }
-      );
-
-      // Done → advance to shuffling phase
-      onComplete();
-    };
-
-    runAnimation();
-  }, [animate, onComplete]);
+  const total = flaggedProducts.length;
 
   return (
-    <div ref={scope} className="relative w-full min-h-[400px] flex items-center justify-center overflow-hidden">
-      {/* Cards positioned around center */}
+    <div
+      className="relative w-full flex items-center justify-center overflow-hidden"
+      style={{ height: 450 }}
+    >
       {flaggedProducts.map((product, i) => {
-        // Distribute cards in a circle around center
-        const angle = (i / Math.max(flaggedProducts.length, 1)) * Math.PI * 2;
-        const radius = 150;
-        const startX = Math.cos(angle) * radius;
-        const startY = Math.sin(angle) * radius;
+        const angle = (i / Math.max(total, 1)) * Math.PI * 2;
+        const r = 150;
+        const cx = Math.cos(angle) * r;
+        const cy = Math.sin(angle) * r;
+
+        // Stagger for spiral phase
+        const spiralDelay = 1.0 + i * 0.08;
 
         return (
-          <motion.div
+          <div
             key={product.id}
-            className="wipe-card absolute"
-            initial={{ x: startX, y: startY, scale: 1, rotate: 0, opacity: 1 }}
-            style={{ filter: "blur(0px)" }}
+            className="absolute"
+            style={{
+              // CSS custom properties drive the keyframes
+              "--cx": `${cx}px`,
+              "--cy": `${cy}px`,
+              // Phase 1: appear (0s to 0.5s), fill forwards so it holds position
+              // Phase 2: spiral (starts at spiralDelay), fill forwards so it ends at center
+              animation: `bh-card-appear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 0.06}s both, bh-card-spiral 0.8s cubic-bezier(0.55, 0, 0.1, 1) ${spiralDelay}s forwards`,
+            } as React.CSSProperties}
           >
-            <div className="w-[200px] h-[120px] rounded-2xl bg-white border border-red-200 shadow-lg p-3 flex flex-col justify-between">
-              <p className="text-xs font-semibold text-[var(--foreground)] line-clamp-2">
+            <div
+              className="rounded-2xl bg-white border border-red-200 shadow-lg p-3 flex flex-col justify-between"
+              style={{ width: 190, height: 110 }}
+            >
+              <p
+                className="text-xs font-semibold line-clamp-2"
+                style={{ color: "var(--foreground)" }}
+              >
                 {product.title}
               </p>
               <div className="flex items-center justify-between">
@@ -93,30 +80,36 @@ export function BlackHoleWipe({ flaggedProducts, onComplete }: BlackHoleWipeProp
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
         );
       })}
 
       {/* Singularity */}
-      <motion.div
-        className="singularity absolute w-24 h-24 rounded-full"
-        initial={{ scale: 0, opacity: 0 }}
+      <div
+        className="absolute rounded-full"
         style={{
+          width: 96,
+          height: 96,
           background: "radial-gradient(circle, #1A1A1A 0%, transparent 70%)",
           boxShadow:
             "0 0 60px 20px rgba(26,26,26,0.4), 0 0 120px 40px rgba(255,107,0,0.15)",
+          // Grow from 0.6s to 1.1s, then collapse from 2.2s to 2.6s
+          animation:
+            "bh-singularity-grow 0.5s ease-out 0.6s both, bh-singularity-collapse 0.4s ease-in 2.2s forwards",
         }}
       />
 
       {/* Label */}
-      <motion.p
-        className="absolute bottom-4 text-xs text-[var(--text-subtle)] font-medium"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+      <p
+        className="absolute text-xs font-medium"
+        style={{
+          bottom: 16,
+          color: "var(--text-subtle)",
+          animation: "label-fade-in-out 2.0s ease 0.2s both",
+        }}
       >
         Eliminating flagged results...
-      </motion.p>
+      </p>
     </div>
   );
 }
