@@ -234,7 +234,7 @@ function HeroSearch() {
 
   function handleInvestigate() {
     const target = url.trim() || "https://www.amazon.com/dp/B0DEMO12345";
-    router.push(`/board?url=${encodeURIComponent(target)}`);
+    router.push(`/board_test?url=${encodeURIComponent(target)}`);
   }
 
   return (
