@@ -223,7 +223,7 @@ async function analyzeWithLLM(
   const openai = new OpenAI();
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     temperature: 0,
     response_format: { type: "json_object" },
     messages: [

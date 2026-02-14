@@ -33,7 +33,7 @@ async function createStagehand(): Promise<Stagehand> {
     apiKey: process.env.BROWSERBASE_API_KEY,
     projectId: process.env.BROWSERBASE_PROJECT_ID,
     model: {
-      modelName: "openai/gpt-4o-mini" as AvailableModel,
+      modelName: "openai/gpt-5-mini" as AvailableModel,
       apiKey: process.env.OPENAI_API_KEY,
     },
   });

@@ -32,14 +32,116 @@ import {
   ChevronRight,
   ShoppingBag,
   Sparkles,
-  FileSearch,
   Sword,
   Shield,
   Skull,
   Heart,
-  Zap,
 } from "lucide-react";
-import type { EvidenceCard, CardSeverity, CardType } from "@/types";
+import type { EvidenceCard, CardSeverity, CardType, ProductResult, FraudCheck, ProductVerdict } from "@/types";
+import { useResultsStore } from "@/stores/resultsStore";
+import { ResultsContainer } from "@/components/results/ResultsContainer";
+import "@/styles/results.css";
+
+/* ═══════════════════════════════════════════════════════════════
+   MOCK PRODUCT DATA (for results store seeding)
+   ═══════════════════════════════════════════════════════════════ */
+
+const mockProducts: ProductResult[] = [
+  { id: "p1", title: "Sony WH-1000XM5 Wireless Noise Cancelling Headphones", price: 278.0, currency: "USD", retailer: "Amazon", domain: "amazon.com", url: "https://amazon.com/dp/B09XS7JWHH", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.7, reviewCount: 12453, snippet: "Industry-leading noise cancellation with Auto NC Optimizer" },
+  { id: "p2", title: "Sony WH-1000XM5 Headphones - Brand New Sealed", price: 189.99, currency: "USD", retailer: "BestAudioDeals", domain: "bestaudiodeals.shop", url: "https://bestaudiodeals.shop/sony-xm5", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.9, reviewCount: 23, snippet: "Unbeatable price! Limited stock available" },
+  { id: "p3", title: "Sony WH-1000XM5 Wireless Headphones Black", price: 295.0, currency: "USD", retailer: "Best Buy", domain: "bestbuy.com", url: "https://bestbuy.com/sony-wh1000xm5", imageUrl: "https://pisces.bbystatic.com/image2/BestBuy_US/images/products/6505/6505727_sd.jpg", rating: 4.6, reviewCount: 8921, snippet: "Free shipping, 15-day return policy" },
+  { id: "p4", title: "XM5 Sony Headphones CHEAP!! Free AirPods included", price: 129.99, currency: "USD", retailer: "DealzKing", domain: "dealzking.xyz", url: "https://dealzking.xyz/sony-xm5-bundle", imageUrl: "", rating: 5.0, reviewCount: 3, snippet: "Best deal online! Buy now before it's gone!" },
+  { id: "p5", title: "Sony WH-1000XM5/S Headphones Silver", price: 289.99, currency: "USD", retailer: "B&H Photo", domain: "bhphotovideo.com", url: "https://bhphotovideo.com/sony-xm5", imageUrl: "https://m.media-amazon.com/images/I/41K5m5LHXAL._AC_SL1500_.jpg", rating: 4.7, reviewCount: 3412, snippet: "Authorized Sony dealer, full warranty" },
+  { id: "p6", title: "Sony WH1000XM5 - Refurbished Like New", price: 159.0, currency: "USD", retailer: "QuickFlipElectronics", domain: "quickflipelectronics.co", url: "https://quickflipelectronics.co/xm5", imageUrl: "", rating: 4.2, reviewCount: 8, snippet: "Refurbished with 30-day guarantee" },
+  { id: "p7", title: "Sony WH-1000XM5 Noise Cancelling Wireless", price: 269.0, currency: "USD", retailer: "Walmart", domain: "walmart.com", url: "https://walmart.com/ip/sony-wh1000xm5", imageUrl: "https://m.media-amazon.com/images/I/51aYfwjGRZL._AC_SL1500_.jpg", rating: 4.5, reviewCount: 6234, snippet: "Free next-day delivery on orders over $35" },
+  { id: "p8", title: "SONY XM5 Premium Headphones - LOWEST PRICE GUARANTEED", price: 99.99, currency: "USD", retailer: "ElectroSavvyDeals", domain: "electrosavvydeals.net", url: "https://electrosavvydeals.net/xm5-deal", imageUrl: "", rating: 4.8, reviewCount: 7, snippet: "We beat any price! 100% satisfaction guaranteed!" },
+];
+
+const mockChecks: Record<string, FraudCheck[]> = {
+  p1: [
+    { name: "Retailer Reputation", status: "passed", detail: "Amazon is a globally trusted marketplace with buyer protection.", severity: 0.05 },
+    { name: "Safety Database", status: "passed", detail: "No flags in Google Safe Browsing or PhishTank databases.", severity: 0.02 },
+    { name: "Community Sentiment", status: "passed", detail: "Overwhelmingly positive sentiment across Reddit and forums.", severity: 0.08 },
+    { name: "Brand Impersonation", status: "passed", detail: "Sold and shipped by Amazon.com. Verified business entity.", severity: 0.03 },
+  ],
+  p2: [
+    { name: "Retailer Reputation", status: "warning", detail: "Domain registered 12 days ago. No established reputation.", severity: 0.72 },
+    { name: "Safety Database", status: "failed", detail: "Domain flagged by 2 community scam databases.", severity: 0.85 },
+    { name: "Community Sentiment", status: "failed", detail: "Multiple Reddit posts warning about this domain.", severity: 0.9 },
+    { name: "Brand Impersonation", status: "failed", detail: "No business registration found. WHOIS privacy enabled.", severity: 0.88 },
+  ],
+  p3: [
+    { name: "Retailer Reputation", status: "passed", detail: "Best Buy is a Fortune 100 company with 1,000+ stores.", severity: 0.03 },
+    { name: "Safety Database", status: "passed", detail: "Clean across all safety databases.", severity: 0.01 },
+    { name: "Community Sentiment", status: "passed", detail: "Strong positive reputation in consumer electronics.", severity: 0.05 },
+    { name: "Brand Impersonation", status: "passed", detail: "Publicly traded company (NYSE: BBY). Verified entity.", severity: 0.02 },
+  ],
+  p4: [
+    { name: "Retailer Reputation", status: "failed", detail: "Domain registered 3 days ago via anonymous registrar.", severity: 0.95 },
+    { name: "Safety Database", status: "failed", detail: "Flagged by Google Safe Browsing as deceptive.", severity: 0.98 },
+    { name: "Community Sentiment", status: "failed", detail: "Zero legitimate mentions. Suspicious social media ads only.", severity: 0.92 },
+    { name: "Brand Impersonation", status: "failed", detail: "No business entity. Uses .xyz TLD common in scam sites.", severity: 0.96 },
+  ],
+  p5: [
+    { name: "Retailer Reputation", status: "passed", detail: "B&H Photo is a trusted NYC-based electronics retailer since 1973.", severity: 0.04 },
+    { name: "Safety Database", status: "passed", detail: "No flags in any safety databases.", severity: 0.01 },
+    { name: "Community Sentiment", status: "passed", detail: "Highly recommended by photography and audio communities.", severity: 0.06 },
+    { name: "Brand Impersonation", status: "passed", detail: "Authorized Sony dealer. Verified business with physical store.", severity: 0.03 },
+  ],
+  p6: [
+    { name: "Retailer Reputation", status: "warning", detail: "Domain registered 45 days ago. Limited track record.", severity: 0.55 },
+    { name: "Safety Database", status: "warning", detail: "Not flagged, but not enough data for confidence.", severity: 0.4 },
+    { name: "Community Sentiment", status: "warning", detail: "One neutral Reddit mention. No established presence.", severity: 0.5 },
+    { name: "Brand Impersonation", status: "warning", detail: "Small business registration found, but no physical address.", severity: 0.48 },
+  ],
+  p7: [
+    { name: "Retailer Reputation", status: "passed", detail: "Walmart is the world's largest retailer with comprehensive buyer protection.", severity: 0.04 },
+    { name: "Safety Database", status: "passed", detail: "No flags across any safety databases.", severity: 0.01 },
+    { name: "Community Sentiment", status: "passed", detail: "Well-known retailer with strong consumer trust.", severity: 0.06 },
+    { name: "Brand Impersonation", status: "passed", detail: "Fortune 1 company (NYSE: WMT). Verified entity.", severity: 0.02 },
+  ],
+  p8: [
+    { name: "Retailer Reputation", status: "failed", detail: "Domain registered 8 days ago. No online presence before this week.", severity: 0.88 },
+    { name: "Safety Database", status: "failed", detail: "Flagged by PhishTank and community scam reports.", severity: 0.91 },
+    { name: "Community Sentiment", status: "failed", detail: "Reddit scam alert thread with 200+ upvotes.", severity: 0.87 },
+    { name: "Brand Impersonation", status: "failed", detail: "Fake address listed. No business registration found.", severity: 0.93 },
+  ],
+};
+
+const mockVerdicts: Record<string, { verdict: ProductVerdict; trustScore: number }> = {
+  p1: { verdict: "trusted", trustScore: 96 },
+  p2: { verdict: "danger", trustScore: 15 },
+  p3: { verdict: "trusted", trustScore: 94 },
+  p4: { verdict: "danger", trustScore: 5 },
+  p5: { verdict: "trusted", trustScore: 93 },
+  p6: { verdict: "caution", trustScore: 52 },
+  p7: { verdict: "trusted", trustScore: 92 },
+  p8: { verdict: "danger", trustScore: 8 },
+};
+
+function seedResultsStore() {
+  const store = useResultsStore.getState();
+  store.reset();
+  let delay = 0;
+  mockProducts.forEach((product) => {
+    delay += 80;
+    setTimeout(() => useResultsStore.getState().addProduct(product), delay);
+    const checks = mockChecks[product.id] || [];
+    checks.forEach((check) => {
+      delay += 40;
+      setTimeout(() => useResultsStore.getState().addFraudCheck(product.id, check), delay);
+    });
+    const verdict = mockVerdicts[product.id];
+    if (verdict) {
+      delay += 60;
+      setTimeout(() => useResultsStore.getState().setVerdict(product.id, verdict.verdict, verdict.trustScore), delay);
+    }
+  });
+  setTimeout(() => {
+    useResultsStore.getState().setBestPick("p1");
+    useResultsStore.getState().setPhase("two-columns");
+  }, delay + 200);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    PIXEL FONT HELPER
@@ -292,7 +394,7 @@ function PixelDog({ style, className }: { style?: React.CSSProperties; className
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   RUNNING DOG — follows the active node with state-based animation
+   DOG NODE — Custom React Flow node for the Sniff character
    ═══════════════════════════════════════════════════════════════ */
 
 /* Idle sniffing SVG — head bobs down */
@@ -342,44 +444,14 @@ function PixelDogIdle({ style, className }: { style?: React.CSSProperties; class
   );
 }
 
+const DOG_NODE_ID = "sniff-dog";
 const DOG_WIDTH = 64;
-const DOG_PAW_OFFSET = 52; // y offset so paws sit on top border of node box
+const DOG_PAW_OFFSET = 52;
 
-function RunningDog({
-  targetNodeId,
-  nodes,
-  isMoving,
-  containerWidth,
-}: {
-  targetNodeId: string;
-  nodes: Node[];
-  isMoving: boolean;
-  containerWidth: number;
-}) {
-  const targetNode = nodes.find((n) => n.id === targetNodeId);
-  // Center the dog on the node (node width ~280-320, dog is 64px)
-  const nodeWidth = targetNodeId === "hero" ? 320 : 280;
-  const rawX = targetNode ? targetNode.position.x + nodeWidth / 2 - DOG_WIDTH / 2 : 140;
-
-  // Clamp to viewport so the dog never disappears off-screen
-  const maxX = Math.max(0, containerWidth - DOG_WIDTH - 20);
-  const x = Math.max(0, Math.min(rawX, maxX));
-
-  // Paws planted on top border of the node
-  const y = NODE_Y - DOG_PAW_OFFSET;
-
+function DogNode({ data }: { data: { isMoving: boolean } }) {
   return (
-    <motion.div
-      animate={{ x }}
-      transition={
-        isMoving
-          ? { type: "spring", stiffness: 80, damping: 18, mass: 1.2 }
-          : { type: "spring", stiffness: 200, damping: 30 }
-      }
-      className="pointer-events-none absolute"
-      style={{ top: y, zIndex: 50 }}
-    >
-      {isMoving ? (
+    <div className="pointer-events-none" style={{ width: DOG_WIDTH, height: 48 }}>
+      {data.isMoving ? (
         <div style={{ animation: "dog-run 0.4s steps(1) infinite" }}>
           <PixelDog />
         </div>
@@ -388,8 +460,18 @@ function RunningDog({
           <PixelDogIdle />
         </div>
       )}
-    </motion.div>
+    </div>
   );
+}
+
+/** Calculate the dog node position so its paws sit on top of the target node */
+function getDogPosition(targetNodeId: string, cardIndex: number): { x: number; y: number } {
+  const nodeWidth = targetNodeId === "hero" ? 320 : 280;
+  const targetX = targetNodeId === "hero" ? 0 : (cardIndex + 1) * NODE_SPACING_X;
+  return {
+    x: targetX + nodeWidth / 2 - DOG_WIDTH / 2,
+    y: NODE_Y - DOG_PAW_OFFSET,
+  };
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -445,7 +527,7 @@ function PixelFrame({ children, className, borderColor = "#1A1A1A" }: { children
           pointerEvents: "none",
         }}
       />
-      <div style={{ position: "relative", zIndex: 1 }}>
+      <div className="flex flex-col" style={{ position: "relative", zIndex: 1, minHeight: 0, flex: "1 1 0%" }}>
         {children}
       </div>
     </div>
@@ -456,14 +538,45 @@ function PixelFrame({ children, className, borderColor = "#1A1A1A" }: { children
    SKY + GRASS BACKGROUND (top half)
    ═══════════════════════════════════════════════════════════════ */
 
+function PixelTree({ x, scale = 1 }: { x: string; scale?: number }) {
+  const w = 48 * scale;
+  const h = 72 * scale;
+  return (
+    <div className="absolute" style={{ left: x, bottom: "4%", transform: `translateX(-50%)` }}>
+      <svg
+        width={w}
+        height={h}
+        viewBox="0 0 16 24"
+        style={{ imageRendering: "pixelated" }}
+      >
+        {/* Trunk */}
+        <rect x="6" y="16" width="4" height="8" fill="#8B5E3C" />
+        <rect x="7" y="16" width="2" height="8" fill="#6B4226" />
+        {/* Foliage — bottom layer */}
+        <rect x="2" y="10" width="12" height="6" fill="#3D7A2E" />
+        {/* Foliage — middle layer */}
+        <rect x="3" y="6" width="10" height="5" fill="#4A8C34" />
+        {/* Foliage — top layer */}
+        <rect x="5" y="2" width="6" height="5" fill="#5EAA42" />
+        {/* Foliage — tip */}
+        <rect x="6" y="0" width="4" height="3" fill="#6BC850" />
+        {/* Highlight pixels */}
+        <rect x="4" y="8" width="2" height="2" fill="#5EAA42" />
+        <rect x="9" y="11" width="2" height="2" fill="#4A8C34" />
+        <rect x="6" y="4" width="2" height="2" fill="#6BC850" />
+      </svg>
+    </div>
+  );
+}
+
 function GameBackground() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      {/* Sky gradient — grass starts at ~70% */}
+      {/* Sky gradient — grass starts at ~85% */}
       <div
         className="absolute inset-0"
         style={{
-          background: "linear-gradient(to bottom, #87CEEB 0%, #B0E0FF 50%, #C8E6B0 65%, #98D982 70%, #5EAA42 80%, #4A8C34 100%)",
+          background: "linear-gradient(to bottom, #87CEEB 0%, #B0E0FF 60%, #C8E6B0 82%, #98D982 86%, #5EAA42 92%, #4A8C34 100%)",
         }}
       />
       {/* Pixel clouds */}
@@ -490,11 +603,20 @@ function GameBackground() {
           <rect x="3" y="0" width="4" height="2" fill="white" />
         </svg>
       </div>
-      {/* Grass line detail — only bottom 30% */}
+
+      {/* Pixel trees */}
+      <PixelTree x="5%" scale={1.2} />
+      <PixelTree x="15%" scale={0.9} />
+      <PixelTree x="30%" scale={1.4} />
+      <PixelTree x="70%" scale={1.1} />
+      <PixelTree x="85%" scale={1.3} />
+      <PixelTree x="95%" scale={0.8} />
+
+      {/* Grass line detail — only bottom 14% */}
       <div
         className="absolute bottom-0 left-0 w-full"
         style={{
-          height: "30%",
+          height: "14%",
           backgroundImage: "repeating-linear-gradient(90deg, #4A8C34 0px, #4A8C34 8px, #5EAA42 8px, #5EAA42 16px)",
           imageRendering: "pixelated",
         }}
@@ -511,44 +633,6 @@ function GameBackground() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DIRT / UNDERGROUND BACKGROUND (bottom half)
-   ═══════════════════════════════════════════════════════════════ */
-
-function DirtBackground() {
-  return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      {/* Base dirt color */}
-      <div className="absolute inset-0" style={{ background: "#C4A46C" }} />
-      {/* Vertical stripes for dirt layers */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "repeating-linear-gradient(90deg, #B8956A 0px, #B8956A 6px, #C4A46C 6px, #C4A46C 12px, #D4B87C 12px, #D4B87C 18px, #C4A46C 18px, #C4A46C 24px)",
-          imageRendering: "pixelated",
-        }}
-      />
-      {/* Horizontal layers */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: "repeating-linear-gradient(to bottom, transparent 0px, transparent 14px, #A8855A33 14px, #A8855A33 16px)",
-          imageRendering: "pixelated",
-        }}
-      />
-      {/* Scattered pixel rocks */}
-      <svg className="absolute inset-0 h-full w-full" style={{ imageRendering: "pixelated", opacity: 0.15 }}>
-        <pattern id="dirt-rocks" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
-          <rect x="4" y="8" width="3" height="3" fill="#8B7355" />
-          <rect x="20" y="18" width="2" height="2" fill="#7A6548" />
-          <rect x="12" y="26" width="4" height="2" fill="#8B7355" />
-          <rect x="24" y="4" width="2" height="3" fill="#6B5B3E" />
-        </pattern>
-        <rect width="100%" height="100%" fill="url(#dirt-rocks)" />
-      </svg>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    HERO PRODUCT CARD NODE — "Quest Card" style
@@ -675,7 +759,7 @@ function EvidenceCardNode({ data }: { data: EvidenceCard & { isNew: boolean } })
 
         {/* Header */}
         <div className="mb-2 flex items-center gap-2">
-          <TypeIcon className={`h-4 w-4 ${colors.text}`} />
+          <span style={{ color: colors.text }}><TypeIcon className="h-4 w-4" /></span>
           <span className="flex-1 truncate" style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
             {data.source}
           </span>
@@ -843,179 +927,127 @@ function DigDeeperPanel({
   );
 }
 
+
 /* ═══════════════════════════════════════════════════════════════
-   FINDING CARD — underground results
+   DIGGING PLACEHOLDER — shown while agent is still investigating
    ═══════════════════════════════════════════════════════════════ */
 
-function FindingCard({ card, index }: { card: EvidenceCard; index: number }) {
-  const colors = SEVERITY_COLORS[card.severity];
-  const TypeIcon = TYPE_ICONS[card.type] || AlertTriangle;
-
+function PixelShovel() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.08, ease: "easeOut" }}
+    <svg
+      width="64"
+      height="64"
+      viewBox="0 0 16 16"
+      style={{ imageRendering: "pixelated" }}
     >
-      <PixelFrame className="p-5" borderColor={colors.border}>
-        <div className="mb-3 flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center"
-            style={{ border: `2px solid ${colors.border}`, background: colors.bg }}
-          >
-            <TypeIcon className={`h-4 w-4 ${colors.text}`} />
-          </div>
-          <div className="flex-1">
-            <h4 style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#1A1A1A", lineHeight: 1.4 }}>
-              {card.title}
-            </h4>
-            <p style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>{card.source}</p>
-          </div>
-          <span
-            style={{
-              fontFamily: PIXEL_FONT,
-              fontSize: 6,
-              color: colors.text,
-              border: `2px solid ${colors.border}`,
-              background: colors.bg,
-              padding: "2px 6px",
-            }}
-          >
-            {colors.label}
-          </span>
-        </div>
-        <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 2, color: "#4A3A2A", marginBottom: 12 }}>
-          {card.detail}
-        </p>
-        <div className="flex items-center gap-2">
-          <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>POWER</span>
-          <div className="flex-1">
-            <PixelBar value={card.confidence * 100} color={colors.barColor} height={10} />
-          </div>
-          <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: colors.text, fontWeight: "bold" }}>
-            {Math.round(card.confidence * 100)}%
-          </span>
-        </div>
-      </PixelFrame>
-    </motion.div>
+      {/* Handle */}
+      <rect x="7" y="0" width="2" height="2" fill="#8B6914" />
+      <rect x="7" y="2" width="2" height="6" fill="#A07828" />
+      <rect x="6" y="2" width="1" height="1" fill="#C49464" />
+      {/* Shaft-to-blade joint */}
+      <rect x="6" y="8" width="4" height="1" fill="#6B5210" />
+      {/* Blade */}
+      <rect x="5" y="9" width="6" height="2" fill="#A0A0A0" />
+      <rect x="4" y="11" width="8" height="2" fill="#C0C0C0" />
+      <rect x="5" y="13" width="6" height="2" fill="#A0A0A0" />
+      <rect x="6" y="15" width="4" height="1" fill="#808080" />
+      {/* Blade highlight */}
+      <rect x="5" y="9" width="1" height="4" fill="#D0D0D0" />
+      {/* Dirt on blade */}
+      <rect x="9" y="12" width="2" height="1" fill="#5C4033" />
+      <rect x="7" y="14" width="2" height="1" fill="#5C4033" />
+    </svg>
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   RESULTS SECTION — underground theme
-   ═══════════════════════════════════════════════════════════════ */
+const DIGGING_MESSAGES = [
+  "DIGGING UP DATA",
+  "SNIFFING FOR DEALS",
+  "HUNTING SCAMS",
+  "CHECKING SOURCES",
+];
 
-function ResultsSection({
-  status,
-  summary,
-  findings,
-  threatScore,
-  resultsRef,
-}: {
-  status: string;
-  summary: string;
-  findings: EvidenceCard[];
-  threatScore: number;
-  resultsRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const barColor = threatScore < 25
-    ? "#00CC00"
-    : threatScore < 50
-    ? "#FFD700"
-    : threatScore < 75
-    ? "#FF8800"
-    : "#FF0000";
+function DiggingPlaceholder() {
+  const [msgIndex, setMsgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIndex((i) => (i + 1) % DIGGING_MESSAGES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <div ref={resultsRef} className="relative min-h-screen px-8 py-10">
-      <DirtBackground />
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <div
+        className="flex flex-col items-center gap-6 px-10 py-8"
+        style={{
+          border: "4px solid #1A1A1A",
+          background: "rgba(42, 32, 20, 0.75)",
+          boxShadow: "4px 4px 0 #1A1A1A",
+        }}
+      >
+        {/* Animated shovel */}
+        <div style={{ animation: "shovel-dig 1.2s ease-in-out infinite" }}>
+          <PixelShovel />
+        </div>
 
-      <div className="relative z-10 mx-auto flex max-w-[720px] flex-col gap-5">
-        {status === "complete" && summary ? (
-          <>
-            {/* Summary header — boss defeated card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            >
-              <PixelFrame className="p-8">
-                <div className="mb-5 flex items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center"
-                    style={{ border: "3px solid #8B0000", background: "#FFF0F0" }}
-                  >
-                    <Skull className="h-6 w-6" style={{ color: "#8B0000" }} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 style={{ fontFamily: PIXEL_FONT, fontSize: 12, color: "#1A1A1A" }}>
-                      QUEST COMPLETE!
-                    </h3>
-                    <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#8B6914", marginTop: 4 }}>
-                      Final analysis and loot
-                    </p>
-                  </div>
-                </div>
+        {/* Dirt particles flying out */}
+        <div className="relative -mt-4 flex gap-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-2 w-2"
+              style={{
+                background: "#8B7355",
+                animation: `dirt-particles 0.8s ease-out infinite`,
+                animationDelay: `${i * 0.25}s`,
+              }}
+            />
+          ))}
+        </div>
 
-                {/* Threat score bar */}
-                <div className="mb-5">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#8B6914" }}>
-                      BOSS THREAT LEVEL
-                    </span>
-                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: barColor, fontWeight: "bold" }}>
-                      {threatScore}/100
-                    </span>
-                  </div>
-                  <PixelBar value={threatScore} color={barColor} height={16} />
-                </div>
+        {/* Main message — cycles through phrases */}
+        <div className="text-center">
+          <p
+            style={{
+              fontFamily: PIXEL_FONT,
+              fontSize: 11,
+              color: "#FFD700",
+              textShadow: "2px 2px 0 #1A1A1A",
+              letterSpacing: 2,
+            }}
+          >
+            {DIGGING_MESSAGES[msgIndex]}...
+          </p>
+        </div>
 
-                <div style={{ border: "3px solid #8B0000", background: "#FFF0F0", padding: 16 }}>
-                  <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 2, color: "#4A3A2A" }}>
-                    {summary}
-                  </p>
-                </div>
-              </PixelFrame>
-            </motion.div>
+        {/* Flickering subtext */}
+        <p
+          style={{
+            fontFamily: PIXEL_FONT,
+            fontSize: 7,
+            color: "#D4C4A0",
+            animation: "retro-blink 1s steps(1) infinite",
+          }}
+        >
+          Quest in progress
+        </p>
 
-            {/* Section label */}
-            <div className="flex items-center gap-3 px-1 pt-2">
-              <Zap className="h-4 w-4" style={{ color: "#FFD700" }} />
-              <span style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#FFF8E8", letterSpacing: 1 }}>
-                EVIDENCE LOOT ({findings.length})
-              </span>
-              <div className="h-[3px] flex-1" style={{ background: "#8B6914" }} />
-            </div>
-
-            {/* Vertical finding cards */}
-            {findings.map((card, i) => (
-              <FindingCard key={card.id} card={card} index={i} />
-            ))}
-
-            <div className="h-10" />
-          </>
-        ) : (
-          <div className="flex min-h-[25vh] flex-col items-center justify-center gap-4 text-center">
-            <PixelFrame className="p-6">
-              <div className="flex flex-col items-center gap-3">
-                <FileSearch className="h-8 w-8" style={{ color: "#8B6914" }} />
-                <p style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#1A1A1A" }}>
-                  AWAITING RESULTS
-                </p>
-                <p style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914", lineHeight: 1.8 }}>
-                  Results will appear after the quest is complete.
-                </p>
-                {status === "investigating" && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <div className="h-2 w-2" style={{ background: "#FFD700", animation: "pixel-blink 1s steps(1) infinite" }} />
-                    <div className="h-2 w-2" style={{ background: "#FFD700", animation: "pixel-blink 1s steps(1) infinite", animationDelay: "0.33s" }} />
-                    <div className="h-2 w-2" style={{ background: "#FFD700", animation: "pixel-blink 1s steps(1) infinite", animationDelay: "0.66s" }} />
-                  </div>
-                )}
-              </div>
-            </PixelFrame>
-          </div>
-        )}
+        {/* Pixel progress dots */}
+        <div className="flex gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-2 w-2"
+              style={{
+                background: "#FFD700",
+                animation: "retro-blink 1.5s steps(1) infinite",
+                animationDelay: `${i * 0.3}s`,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1028,6 +1060,7 @@ function ResultsSection({
 const nodeTypes: NodeTypes = {
   evidenceCard: EvidenceCardNode,
   heroCard: HeroCardNode,
+  dogNode: DogNode,
 };
 
 export default function BoardPage() {
@@ -1040,11 +1073,7 @@ export default function BoardPage() {
   const [status, setStatus] = useState<"investigating" | "complete">("investigating");
   const [summary, setSummary] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [findings, setFindings] = useState<EvidenceCard[]>([]);
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [activeNodeId, setActiveNodeId] = useState("hero");
-  const [dogMoving, setDogMoving] = useState(false);
-  const [flowContainerWidth, setFlowContainerWidth] = useState(800);
   const cardCountRef = useRef(0);
   const logIdRef = useRef(0);
   const hasStarted = useRef(false);
@@ -1102,19 +1131,6 @@ export default function BoardPage() {
     return () => clearTimeout(t);
   }, []);
 
-  // Track React Flow container width for dog bounding box
-  useEffect(() => {
-    const el = reactFlowSectionRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setFlowContainerWidth(entry.contentRect.width);
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   useEffect(() => {
     const heroNode: Node = {
       id: "hero",
@@ -1123,7 +1139,17 @@ export default function BoardPage() {
       data: { url: targetUrl, threatScore: 0, status: "investigating", summary: "" },
       draggable: true,
     };
-    setNodes([heroNode]);
+    const dogNode: Node = {
+      id: DOG_NODE_ID,
+      type: "dogNode",
+      position: getDogPosition("hero", 0),
+      data: { isMoving: false },
+      draggable: false,
+      selectable: false,
+      connectable: false,
+      zIndex: 1000,
+    };
+    setNodes([heroNode, dogNode]);
   }, [targetUrl, setNodes]);
 
   useEffect(() => {
@@ -1141,21 +1167,32 @@ export default function BoardPage() {
         switch (evt.event) {
           case "log": {
             addLog(evt.data.text);
-            // Dog is "thinking" / sniffing during log phases
-            setDogMoving(false);
             break;
           }
           case "card": {
             const card = evt.data as EvidenceCard;
-            const pos = getLinearPosition(cardCountRef.current);
+            const currentIndex = cardCountRef.current;
+            const pos = getLinearPosition(currentIndex);
             cardCountRef.current++;
             addLog(`Evidence found: ${card.title}`);
 
-            setFindings((prev) => [...prev, card]);
-            setDogMoving(true);
-            setActiveNodeId(card.id);
+            // Move the dog node to the new card's position
+            const dogPos = getDogPosition(card.id, currentIndex);
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === DOG_NODE_ID
+                  ? { ...n, position: dogPos, data: { isMoving: true } }
+                  : n
+              )
+            );
             // Switch to idle/sniffing after the dog arrives (~800ms)
-            setTimeout(() => setDogMoving(false), 800);
+            setTimeout(() => {
+              setNodes((prev) =>
+                prev.map((n) =>
+                  n.id === DOG_NODE_ID ? { ...n, data: { isMoving: false } } : n
+                )
+              );
+            }, 800);
 
             const newNode: Node = {
               id: card.id,
@@ -1212,6 +1249,8 @@ export default function BoardPage() {
                   : n
               )
             );
+            // Seed the results store with mock product data
+            seedResultsStore();
             break;
           }
         }
@@ -1328,15 +1367,6 @@ export default function BoardPage() {
                 />
               </ReactFlow>
 
-              {/* Running dog overlay — z-50 to walk in front of edges */}
-              <div className="pointer-events-none absolute inset-0" style={{ zIndex: 50 }}>
-                <RunningDog
-                  targetNodeId={activeNodeId}
-                  nodes={nodes}
-                  isMoving={dogMoving}
-                  containerWidth={flowContainerWidth}
-                />
-              </div>
             </div>
           </div>
 
@@ -1352,14 +1382,32 @@ export default function BoardPage() {
             />
           </div>
 
-          {/* ── Results section — underground ── */}
-          <ResultsSection
-            status={status}
-            summary={summary}
-            findings={findings}
-            threatScore={threatScore}
-            resultsRef={resultsRef}
-          />
+          {/* ── Results section — underground dirt zone ── */}
+          <div ref={resultsRef} className="dirt-underground min-h-[50vh]">
+            <div className="relative z-10">
+              <AnimatePresence mode="wait">
+                {status === "investigating" ? (
+                  <motion.div
+                    key="digging"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, y: -20, transition: { duration: 0.3 } }}
+                  >
+                    <DiggingPlaceholder />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="results"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <ResultsContainer />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </div>
     </div>
