@@ -6,8 +6,6 @@ import type { Refinement } from "@/types/clarify";
 interface QuestionCardProps {
   refinement: Refinement;
   questionNumber: number;
-  totalQuestions: number;
-  isLast: boolean;
   onAnswer: (value: string) => void;
 }
 
@@ -16,18 +14,12 @@ const PIXEL_FONT = "'Press Start 2P', monospace";
 /**
  * QuestionCard — A single clarifying question with pixel-themed UI.
  *
- * Features:
- *   - Typing animation for the question text
- *   - Staggered button pop-in
- *   - Optional spectrum slider for budget questions
- *   - "Last question!" badge on final question
- *   - All animations via pure CSS @keyframes
+ * Simplified: no "last question" badge, no total count (user decides when done).
+ * Just shows the question number, typing animation, and option buttons.
  */
 export function QuestionCard({
   refinement,
   questionNumber,
-  totalQuestions,
-  isLast,
   onAnswer,
 }: QuestionCardProps) {
   const [typedText, setTypedText] = useState("");
@@ -42,7 +34,7 @@ export function QuestionCard({
   const isSpectrum = refinement.type === "spectrum" && refinement.spectrumRange;
   const questionText = `What ${refinement.label.toLowerCase()} are you looking for?`;
 
-  // Typing animation — character by character via setInterval
+  // Typing animation
   useEffect(() => {
     setTypedText("");
     setTypingDone(false);
@@ -64,9 +56,8 @@ export function QuestionCard({
 
   const handleOptionClick = useCallback(
     (value: string) => {
-      if (selectedValue) return; // prevent double-clicks
+      if (selectedValue) return;
       setSelectedValue(value);
-      // Brief delay for the selected animation to play, then fire callback
       setTimeout(() => onAnswer(value), 350);
     },
     [selectedValue, onAnswer]
@@ -79,38 +70,13 @@ export function QuestionCard({
     setTimeout(() => onAnswer(formatted), 350);
   }, [selectedValue, sliderValue, onAnswer]);
 
-  // Grid columns: 2 for 4+ options, 1 for fewer
   const gridCols = refinement.options.length >= 4 ? "grid-cols-2" : "grid-cols-1";
 
   return (
     <div
       className="w-full max-w-xl mx-auto"
-      style={{
-        animation: "clarify-card-enter 0.4s ease-out both",
-      }}
+      style={{ animation: "clarify-card-enter 0.4s ease-out both" }}
     >
-      {/* "Last question!" badge */}
-      {isLast && (
-        <div
-          className="flex justify-center mb-3"
-          style={{ animation: "badge-bounce 0.5s ease-out both" }}
-        >
-          <div
-            className="px-4 py-2"
-            style={{
-              fontFamily: PIXEL_FONT,
-              fontSize: 8,
-              color: "#FFF8E8",
-              background: "#FF6B00",
-              border: "3px solid #1A1A1A",
-              boxShadow: "0 3px 0 #CC5500",
-            }}
-          >
-            ★ Last Question! ★
-          </div>
-        </div>
-      )}
-
       {/* Main pixel frame card */}
       <div className="pixel-frame p-8">
         {/* Question counter */}
@@ -122,24 +88,8 @@ export function QuestionCard({
               color: "#8B6914",
             }}
           >
-            Q{questionNumber}/{totalQuestions}
+            Q{questionNumber}
           </span>
-
-          {/* Progress dots */}
-          <div className="flex gap-1.5">
-            {Array.from({ length: totalQuestions }).map((_, i) => (
-              <div
-                key={i}
-                className={`question-dot ${
-                  i < questionNumber - 1
-                    ? "completed"
-                    : i === questionNumber - 1
-                    ? "active"
-                    : ""
-                }`}
-              />
-            ))}
-          </div>
         </div>
 
         {/* Category label */}
@@ -183,7 +133,7 @@ export function QuestionCard({
           </p>
         </div>
 
-        {/* Options — Buttons or Spectrum */}
+        {/* Options — Buttons */}
         {typingDone && !isSpectrum && (
           <div className={`grid ${gridCols} gap-3`}>
             {refinement.options.map((option, i) => (
@@ -215,10 +165,7 @@ export function QuestionCard({
 
         {/* Spectrum slider for budget */}
         {typingDone && isSpectrum && refinement.spectrumRange && (
-          <div
-            style={{ animation: "option-pop 0.3s ease-out both" }}
-          >
-            {/* Value display */}
+          <div style={{ animation: "option-pop 0.3s ease-out both" }}>
             <div className="flex justify-center mb-4">
               <div
                 className="px-5 py-2"
@@ -235,7 +182,6 @@ export function QuestionCard({
               </div>
             </div>
 
-            {/* Slider */}
             <input
               type="range"
               min={refinement.spectrumRange[0]}
@@ -247,31 +193,22 @@ export function QuestionCard({
               disabled={!!selectedValue}
             />
 
-            {/* Range labels */}
             <div className="flex justify-between mb-4">
-              <span
-                style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}
-              >
+              <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
                 ${refinement.spectrumRange[0]}
               </span>
-              <span
-                style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}
-              >
+              <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
                 ${refinement.spectrumRange[1]}
               </span>
             </div>
 
-            {/* Confirm button */}
             <button
               onClick={handleSpectrumConfirm}
               disabled={!!selectedValue}
               className={`clarify-pixel-btn w-full px-4 py-3 text-center ${
                 selectedValue ? "selected" : ""
               }`}
-              style={{
-                fontFamily: PIXEL_FONT,
-                fontSize: 8,
-              }}
+              style={{ fontFamily: PIXEL_FONT, fontSize: 8 }}
             >
               {selectedValue ? `✓ $${sliderValue}` : `Set Budget: $${sliderValue}`}
             </button>
