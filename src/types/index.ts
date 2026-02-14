@@ -120,6 +120,15 @@ export interface SearchRequest {
   url?: string;   // product URL to find alternatives for
 }
 
+// ── Results UI Phase (animation state machine) ───────────────────────────
+
+export type ResultsPhase =
+  | "hidden"
+  | "two-columns"
+  | "wiping"
+  | "shuffling"
+  | "final-list";
+
 export type SearchSSEEvent =
   | { event: "narration"; data: { text: string } }
   | { event: "product"; data: ProductResult }
