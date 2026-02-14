@@ -1,5 +1,13 @@
 import OpenAI from "openai";
+import { v4 as uuidv4 } from "uuid";
 import { toolDefinitions, executeTool } from "@/lib/tools";
+import {
+  createInvestigation,
+  getInvestigation,
+  addCards,
+  updateThreatScore as storeUpdateThreatScore,
+  incrementTurn,
+} from "@/lib/investigationStore";
 import type { EvidenceCard, SSEEvent } from "@/types";
 
 function getOpenAI() {
@@ -26,27 +34,68 @@ const DEEPEN_PROMPTS: Record<string, string> = {
 
 export type SSEWriter = (event: SSEEvent) => void;
 
+/**
+ * Turn 1: Initial investigation. Creates a new investigation in the store.
+ * The investigation ID is sent via the "done" event so the frontend can use it for deepen calls.
+ */
 export async function runInvestigation(
   url: string,
   writer: SSEWriter
 ): Promise<void> {
+  const investigationId = uuidv4();
+  createInvestigation(investigationId, url);
+
   await runAgent(
     INVESTIGATE_SYSTEM_PROMPT,
     `Investigate this URL for potential scams: ${url}`,
-    writer
+    writer,
+    investigationId
   );
 }
 
+/**
+ * Turn 2+: Deepen an existing investigation with a specific focus.
+ * Carries forward all prior evidence as context so the agent doesn't repeat findings.
+ */
 export async function runDeepen(
-  url: string,
+  investigationId: string,
   focus: string,
   writer: SSEWriter
 ): Promise<void> {
+  const investigation = getInvestigation(investigationId);
+  if (!investigation) {
+    writer({
+      event: "error",
+      data: { message: `Investigation ${investigationId} not found. It may have expired.` },
+    });
+    return;
+  }
+
+  incrementTurn(investigationId);
+
   const focusPrompt = DEEPEN_PROMPTS[focus] || DEEPEN_PROMPTS.seller;
+
+  // Build context from previous findings
+  const priorContext = investigation.cards
+    .map((c) => `[${c.severity.toUpperCase()}] ${c.title}: ${c.detail} (source: ${c.source})`)
+    .join("\n");
+
+  const contextualPrompt = `${focusPrompt}
+
+URL: ${investigation.url}
+
+This is Turn ${investigation.turn} of the investigation. Current threat score: ${investigation.threatScore}/100.
+
+Previous findings:
+${priorContext}
+
+Build on these findings — don't repeat what's already known. Focus on NEW evidence.`;
+
   await runAgent(
     INVESTIGATE_SYSTEM_PROMPT,
-    `${focusPrompt}\n\nURL: ${url}`,
-    writer
+    contextualPrompt,
+    writer,
+    investigationId
   );
 }
 
@@ -64,9 +113,12 @@ export async function runCompare(
 async function runAgent(
   systemPrompt: string,
   userMessage: string,
-  writer: SSEWriter
+  writer: SSEWriter,
+  investigationId?: string
 ): Promise<void> {
-  let threatScore = 0;
+  let threatScore = investigationId
+    ? (getInvestigation(investigationId)?.threatScore ?? 0)
+    : 0;
   let cardCount = 0;
 
   try {
@@ -77,50 +129,57 @@ async function runAgent(
       tools: toolDefinitions,
     });
 
-    // Process tool calls
     const toolCalls = response.output.filter(
       (item) => item.type === "function_call"
     );
 
     if (toolCalls.length > 0) {
-      // Execute all tool calls and collect results
-      const toolResults: { call_id: string; output: string }[] = [];
-      for (const call of toolCalls) {
-        if (call.type !== "function_call") continue;
+      // Execute all tool calls in parallel for speed
+      const toolResults = await Promise.all(
+        toolCalls
+          .filter((call) => call.type === "function_call")
+          .map(async (call) => {
+            if (call.type !== "function_call") {
+              return { call_id: "", output: "" };
+            }
 
-        writer({
-          event: "narration",
-          data: { text: `Running ${call.name.replace(/_/g, " ")}...` },
-        });
-
-        try {
-          const args = JSON.parse(call.arguments);
-          const result = await executeTool(call.name, args);
-          const cards = Array.isArray(result) ? result : [result];
-
-          for (const card of cards) {
-            writer({ event: "card", data: card });
-            cardCount++;
-            threatScore = updateThreatScore(threatScore, card);
             writer({
-              event: "threat_score",
-              data: { score: threatScore },
+              event: "narration",
+              data: { text: `Running ${call.name.replace(/_/g, " ")}...` },
             });
-          }
 
-          toolResults.push({
-            call_id: call.call_id,
-            output: JSON.stringify(cards),
-          });
-        } catch (error) {
-          toolResults.push({
-            call_id: call.call_id,
-            output: JSON.stringify({
-              error: error instanceof Error ? error.message : "Tool execution failed",
-            }),
-          });
-        }
-      }
+            try {
+              const args = JSON.parse(call.arguments);
+              const result = await executeTool(call.name, args);
+              const cards = Array.isArray(result) ? result : [result];
+
+              for (const card of cards) {
+                writer({ event: "card", data: card });
+                cardCount++;
+                threatScore = calcThreatScore(threatScore, card);
+                writer({ event: "threat_score", data: { score: threatScore } });
+              }
+
+              // Persist cards for multi-turn context
+              if (investigationId) {
+                addCards(investigationId, cards);
+                storeUpdateThreatScore(investigationId, threatScore);
+              }
+
+              return {
+                call_id: call.call_id,
+                output: JSON.stringify(cards),
+              };
+            } catch (error) {
+              return {
+                call_id: call.call_id,
+                output: JSON.stringify({
+                  error: error instanceof Error ? error.message : "Tool execution failed",
+                }),
+              };
+            }
+          })
+      );
 
       // Send tool results back for final analysis
       const followUp = await getOpenAI().responses.create({
@@ -128,7 +187,6 @@ async function runAgent(
         instructions: systemPrompt,
         input: [
           { role: "user", content: userMessage },
-          // Include original response output items
           ...response.output.map((item) => {
             if (item.type === "function_call") {
               return {
@@ -141,7 +199,6 @@ async function runAgent(
             }
             return item;
           }),
-          // Include tool results
           ...toolResults.map((r) => ({
             type: "function_call_output" as const,
             call_id: r.call_id,
@@ -151,7 +208,6 @@ async function runAgent(
         tools: toolDefinitions,
       });
 
-      // Extract final text response
       const textOutput = followUp.output.find((item) => item.type === "message");
       if (textOutput && textOutput.type === "message") {
         const textContent = textOutput.content.find((c) => c.type === "output_text");
@@ -164,13 +220,10 @@ async function runAgent(
       }
     }
 
-    // Auto-generate connections between related cards
-    // (connections are generated based on card types that naturally relate)
-
     writer({
       event: "done",
       data: {
-        summary: `Investigation complete. Found ${cardCount} evidence items. Threat score: ${threatScore}/100.`,
+        summary: `Investigation complete. Found ${cardCount} evidence items. Threat score: ${threatScore}/100.${investigationId ? ` Investigation ID: ${investigationId}` : ""}`,
       },
     });
   } catch (error) {
@@ -183,7 +236,7 @@ async function runAgent(
   }
 }
 
-function updateThreatScore(current: number, card: EvidenceCard): number {
+function calcThreatScore(current: number, card: EvidenceCard): number {
   const severityWeights: Record<string, number> = {
     critical: 20,
     warning: 10,

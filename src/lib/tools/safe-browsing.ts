@@ -20,7 +20,7 @@ const THREAT_LABELS: Record<string, string> = {
 };
 
 export async function safeBrowsingCheck(url: string): Promise<EvidenceCard> {
-  const apiKey = process.env.GOOGLE_SAFE_BROWSING_API_KEY;
+  const apiKey = process.env.GOOGLE_SAFE_BROWSING_KEY;
   if (!apiKey) {
     return {
       id: uuidv4(),
