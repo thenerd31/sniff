@@ -4,6 +4,7 @@ import { safeBrowsingCheck } from "./safe-browsing";
 import { scrapeForRedFlags } from "./scraper";
 import { redditSearch } from "./reddit";
 import { scamadviserCheck } from "./scamadviser";
+import { priceSearch } from "./priceSearch";
 import type { EvidenceCard } from "@/types";
 
 function defineTool(name: string, description: string) {
@@ -49,6 +50,10 @@ export const toolDefinitions = [
     "scamadviser_check",
     "Queries ScamAdviser for the domain's trust score and risk assessment based on their database of known scam sites."
   ),
+  defineTool(
+    "price_search",
+    "Searches for the same product across legitimate retailers to compare prices. Use this for price comparison investigations and to find better deals."
+  ),
 ];
 
 // Tool executor map
@@ -69,6 +74,8 @@ export async function executeTool(
       return redditSearch(args.url);
     case "scamadviser_check":
       return scamadviserCheck(args.url);
+    case "price_search":
+      return priceSearch(args.url);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
