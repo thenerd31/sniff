@@ -12,168 +12,77 @@ import type { EvidenceCard } from "@/types";
 
 const openai = new OpenAI();
 
-// ── Focus-Specific Prompts ─────────────────────────────────────────────
-const FOCUS_PROMPTS: Record<string, string> = {
-  seller: `Focus on SELLER INVESTIGATION:
-- Search for the seller/company behind this domain
-- Look for business registration, shell company indicators
-- Check for multiple domains registered by the same entity
-- Search Reddit for complaints about this seller
-- Emit 3-5 NEW evidence cards about seller legitimacy`,
-
-  reviews: `Focus on REVIEW ANALYSIS:
-- Search for reviews of this website/store
-- Look for patterns of fake reviews (similar language, posted in bursts)
-- Check if review scores seem manipulated
-- Search Reddit for real user experiences
-- Emit 3-5 NEW evidence cards about review authenticity`,
-
-  business: `Focus on BUSINESS VERIFICATION:
-- Search for corporate registration records
-- Look for physical address verification
-- Check for shell company indicators (registered agent, virtual office)
-- Verify contact information (phone, email domain)
-- Emit 3-5 NEW evidence cards about business legitimacy`,
-
-  alternatives: `Focus on FINDING LEGITIMATE ALTERNATIVES:
-- Identify what product/service this site sells
-- Find legitimate, well-known retailers selling the same thing
-- Compare pricing between legitimate options
-- Emit 3-5 evidence cards with severity "safe" for legitimate alternatives`,
-
-  price_history: `Focus on PRICE ANALYSIS:
-- Research the typical price for this product
-- Check if the listed price is too good to be true
-- Look for artificial urgency (fake countdown timers, limited stock claims)
-- Compare with retail prices at major stores
-- Emit 3-5 NEW evidence cards about pricing legitimacy`,
+// ── Focus-specific tool mappings ───────────────────────────────────────
+// Each focus area runs specific tools — no agent needed to decide
+const FOCUS_TOOLS: Record<string, { name: string; fn: (url: string) => Promise<EvidenceCard | EvidenceCard[]> }[]> = {
+  seller: [
+    { name: "WHOIS Deep Dive", fn: whoisLookup },
+    { name: "Reddit (seller reports)", fn: redditSearch },
+    { name: "ScamAdviser", fn: scamadviserCheck },
+  ],
+  reviews: [
+    { name: "Reddit (reviews)", fn: redditSearch },
+    { name: "ScamAdviser", fn: scamadviserCheck },
+    { name: "Page Scanner", fn: scrapeForRedFlags },
+  ],
+  business: [
+    { name: "WHOIS (business info)", fn: whoisLookup },
+    { name: "ScamAdviser", fn: scamadviserCheck },
+  ],
+  alternatives: [
+    { name: "Price Search", fn: priceSearch },
+  ],
+  price_history: [
+    { name: "Price Search", fn: priceSearch },
+    { name: "Page Scanner", fn: scrapeForRedFlags },
+  ],
 };
 
-function buildDeepenPrompt(focus: string, existingCards: EvidenceCard[]): string {
-  const existingSummary = existingCards
-    .map((c) => `- [${c.severity.toUpperCase()}] ${c.title}: ${c.detail} (cardId: ${c.id})`)
-    .join("\n");
+// ── Focus-specific synthesis prompts ───────────────────────────────────
+const FOCUS_PROMPTS: Record<string, string> = {
+  seller: "Focus your analysis on seller legitimacy. Look for shell company indicators, ownership concealment, and connections to known fraud patterns.",
+  reviews: "Focus your analysis on review authenticity. Look for fake review patterns, astroturfing, and whether user complaints describe real scam experiences.",
+  business: "Focus your analysis on business legitimacy. Look for corporate registration gaps, virtual office indicators, and entity verification failures.",
+  alternatives: "Focus on identifying legitimate alternatives. Compare pricing and highlight which retailers are trustworthy.",
+  price_history: "Focus on pricing legitimacy. Look for artificial inflation, fake discounts, and too-good-to-be-true pricing patterns.",
+};
 
-  const existingIds = existingCards.map((c) => c.id).join(", ");
-  const focusInstructions = FOCUS_PROMPTS[focus] || `Investigate further in the area of: ${focus}`;
+// ── Synthesis Prompt ───────────────────────────────────────────────────
+function buildSynthesisPrompt(focus: string, existingCards: EvidenceCard[]): string {
+  const focusInstruction = FOCUS_PROMPTS[focus] || "Analyze the new evidence in context of existing findings.";
 
-  return `You are Sentinel, continuing an existing fraud investigation. The user wants to dig deeper.
+  return `You are Sentinel, continuing a fraud investigation. The user clicked "Dig Deeper" on "${focus}".
 
 EXISTING EVIDENCE (already on the board):
-${existingSummary}
+${existingCards.map((c) => `[ID: ${c.id}] [${c.severity.toUpperCase()}] ${c.title}: ${c.detail}`).join("\n")}
 
-EXISTING CARD IDS (use these in connectTo to link new cards to old ones): ${existingIds}
+NEW EVIDENCE (just gathered):
+These will be provided below.
 
-${focusInstructions}
+${focusInstruction}
 
-RULES:
-- Emit ONLY NEW findings. Do NOT repeat existing evidence.
-- Connect new cards to existing ones where relevant using connectTo.
-- Update the threat score based on ALL evidence (old + new).
-- Be specific with dates, numbers, sources.`;
+Respond with valid JSON:
+{
+  "connections": [
+    { "from": "new-card-id", "to": "existing-card-id", "label": "relationship" }
+  ],
+  "additionalCards": [
+    {
+      "type": "alert|business|seller|scam_report",
+      "severity": "critical|warning|info|safe",
+      "title": "Short headline",
+      "detail": "Detailed explanation",
+      "source": "Sentinel AI Analysis",
+      "confidence": 0.85,
+      "connectTo": ["card-ids-to-link-to"]
+    }
+  ],
+  "threatScore": 75,
+  "threatReasoning": "Updated assessment considering ALL evidence (old + new)",
+  "narration": "2-3 sentence summary of what the deeper investigation revealed"
 }
 
-// ── Tool Definition Helper ──────────────────────────────────────────────
-function defineTool(name: string, description: string, parameters?: Record<string, unknown>): OpenAI.Responses.Tool {
-  return {
-    type: "function" as const,
-    name,
-    description,
-    strict: false as const,
-    parameters: parameters || {
-      type: "object" as const,
-      properties: { url: { type: "string" as const } },
-      required: ["url"] as const,
-      additionalProperties: false as const,
-    },
-  };
-}
-
-// ── Tool Definitions ───────────────────────────────────────────────────
-const tools: OpenAI.Responses.Tool[] = [
-  defineTool("whois_lookup", "WHOIS lookup on the domain."),
-  defineTool("ssl_analysis", "Analyze SSL/TLS certificate."),
-  defineTool("safe_browsing_check", "Check against Google Safe Browsing."),
-  defineTool("scrape_red_flags", "Scrape webpage for scam red flags."),
-  defineTool("reddit_search", "Search Reddit for reports about this domain."),
-  defineTool("scamadviser_check", "Query ScamAdviser for trust score."),
-  defineTool("price_search", "Search for product prices across legitimate retailers."),
-  defineTool("emit_evidence_card", "Pin an evidence card to the board.", {
-    type: "object" as const,
-    properties: {
-      type: { type: "string" as const, enum: ["domain", "ssl", "scam_report", "review_analysis", "price", "seller", "business", "alert", "email", "alternative"] },
-      severity: { type: "string" as const, enum: ["critical", "warning", "info", "safe"] },
-      title: { type: "string" as const },
-      detail: { type: "string" as const },
-      source: { type: "string" as const },
-      confidence: { type: "number" as const },
-      connectTo: { type: "array" as const, items: { type: "string" as const } },
-    },
-    required: ["type", "severity", "title", "detail", "source", "confidence"] as const,
-    additionalProperties: false as const,
-  }),
-  defineTool("set_threat_score", "Update the overall threat score (0-100).", {
-    type: "object" as const,
-    properties: {
-      score: { type: "number" as const },
-      reasoning: { type: "string" as const },
-    },
-    required: ["score", "reasoning"] as const,
-    additionalProperties: false as const,
-  }),
-];
-
-// ── Tool Executor ──────────────────────────────────────────────────────
-async function executeTool(
-  name: string,
-  args: Record<string, string>,
-  send: (event: string, data: unknown) => void,
-  cardIds: string[]
-): Promise<string> {
-  switch (name) {
-    case "whois_lookup":
-      return JSON.stringify(await whoisLookup(args.url));
-    case "ssl_analysis":
-      return JSON.stringify(await sslAnalysis(args.url));
-    case "safe_browsing_check":
-      return JSON.stringify(await safeBrowsingCheck(args.url));
-    case "scrape_red_flags":
-      return JSON.stringify(await scrapeForRedFlags(args.url));
-    case "reddit_search":
-      return JSON.stringify(await redditSearch(args.url));
-    case "scamadviser_check":
-      return JSON.stringify(await scamadviserCheck(args.url));
-    case "price_search":
-      return JSON.stringify(await priceSearch(args.url));
-    case "emit_evidence_card": {
-      const id = `card-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-      cardIds.push(id);
-      const card: EvidenceCard = {
-        id,
-        type: args.type as EvidenceCard["type"],
-        severity: args.severity as EvidenceCard["severity"],
-        title: args.title,
-        detail: args.detail,
-        source: args.source,
-        confidence: parseFloat(args.confidence) || 0.5,
-        connections: (Array.isArray(args.connectTo) ? args.connectTo : []) as string[],
-        metadata: {},
-      };
-      send("card", card);
-      if (Array.isArray(args.connectTo)) {
-        for (const targetId of args.connectTo) {
-          send("connection", { from: id, to: targetId });
-        }
-      }
-      return JSON.stringify({ success: true, cardId: id });
-    }
-    case "set_threat_score": {
-      send("threat_score", { score: parseFloat(args.score) || 0 });
-      return JSON.stringify({ success: true });
-    }
-    default:
-      return JSON.stringify({ error: `Unknown tool: ${name}` });
-  }
+IMPORTANT: Connect NEW cards to EXISTING cards where evidence reinforces or contradicts. This is what makes the investigation board powerful — showing how deeper investigation connects to initial findings.`;
 }
 
 // ── Route Handler ──────────────────────────────────────────────────────
@@ -184,78 +93,107 @@ export async function POST(req: NextRequest) {
   (async () => {
     try {
       const domain = new URL(url).hostname;
-      const cardIds: string[] = (existingCards || []).map((c: EvidenceCard) => c.id);
-      const systemPrompt = buildDeepenPrompt(focus, existingCards || []);
-      const userMessage = `Dig deeper into "${focus}" for URL: ${url} (domain: ${domain})`;
+      const existing: EvidenceCard[] = existingCards || [];
+      const toolsToRun = FOCUS_TOOLS[focus] || FOCUS_TOOLS.seller;
 
-      const conversationHistory: OpenAI.Responses.ResponseInputItem[] = [
-        { role: "user", content: userMessage },
-      ];
+      // ── PHASE 1: Run focus-specific tools, stream cards ──
+      send("narration", { text: `Digging deeper into ${focus}...` });
 
-      let result = await openai.responses.create({
-        model: "gpt-4o",
-        instructions: systemPrompt,
-        input: conversationHistory,
-        tools,
-      });
+      const newCards: EvidenceCard[] = [];
 
-      const MAX_ITERATIONS = 4;
-      for (let i = 0; i < MAX_ITERATIONS; i++) {
-        const toolCalls = result.output.filter(
-          (item) => item.type === "function_call"
-        );
-
-        if (toolCalls.length === 0) break;
-
-        for (const item of result.output) {
-          if (item.type === "function_call") {
-            conversationHistory.push({
-              type: "function_call",
-              id: item.id,
-              call_id: item.call_id,
-              name: item.name,
-              arguments: item.arguments,
-            });
-          }
-        }
-
-        for (const call of toolCalls) {
-          if (call.type !== "function_call") continue;
-
-          send("narration", { text: `Running ${call.name.replace(/_/g, " ")}...` });
-
+      await Promise.allSettled(
+        toolsToRun.map(async (tool) => {
+          send("narration", { text: `Running ${tool.name}...` });
           try {
-            const args = JSON.parse(call.arguments);
-            const output = await executeTool(call.name, args, send, cardIds);
-            conversationHistory.push({
-              type: "function_call_output",
-              call_id: call.call_id,
-              output,
-            });
+            const result = await tool.fn(url);
+            const cards = Array.isArray(result) ? result : [result];
+            for (const card of cards) {
+              send("card", card);
+              newCards.push(card);
+              await new Promise((r) => setTimeout(r, 300));
+            }
           } catch (error) {
-            conversationHistory.push({
-              type: "function_call_output",
-              call_id: call.call_id,
-              output: JSON.stringify({
-                error: error instanceof Error ? error.message : "Tool failed",
-              }),
-            });
+            console.error(`${tool.name} failed:`, error);
           }
-        }
+        })
+      );
 
-        result = await openai.responses.create({
-          model: "gpt-4o",
-          instructions: systemPrompt,
-          input: conversationHistory,
-          tools,
-        });
+      if (newCards.length === 0) {
+        send("error", { message: "Deeper investigation tools failed" });
+        close();
+        return;
       }
 
-      const textOutput = result.output.find((item) => item.type === "message");
+      // ── PHASE 2: Agent synthesizes with ALL evidence (old + new) ──
+      send("narration", { text: "Cross-referencing with existing evidence..." });
+
+      const newCardSummary = newCards
+        .map((c) => `[ID: ${c.id}] [${c.severity.toUpperCase()}] ${c.title}: ${c.detail} (source: ${c.source})`)
+        .join("\n");
+
+      const synthesisPrompt = buildSynthesisPrompt(focus, existing);
+
+      const synthesisResult = await openai.responses.create({
+        model: "gpt-4o",
+        instructions: synthesisPrompt,
+        input: `New evidence from "${focus}" investigation:\n${newCardSummary}`,
+      });
+
+      const textOutput = synthesisResult.output.find((item) => item.type === "message");
       if (textOutput && textOutput.type === "message") {
         const textContent = textOutput.content.find((c) => c.type === "output_text");
         if (textContent && textContent.type === "output_text") {
-          send("narration", { text: textContent.text });
+          try {
+            const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("No JSON found");
+            const synthesis = JSON.parse(jsonMatch[0]);
+
+            // Stream connections (red strings between new and old cards)
+            if (Array.isArray(synthesis.connections)) {
+              for (const conn of synthesis.connections) {
+                send("connection", { from: conn.from, to: conn.to, label: conn.label });
+                await new Promise((r) => setTimeout(r, 200));
+              }
+            }
+
+            // Stream additional insight cards
+            if (Array.isArray(synthesis.additionalCards)) {
+              for (const cardData of synthesis.additionalCards) {
+                const id = `insight-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                const card: EvidenceCard = {
+                  id,
+                  type: (cardData.type || "alert") as EvidenceCard["type"],
+                  severity: (cardData.severity || "info") as EvidenceCard["severity"],
+                  title: cardData.title,
+                  detail: cardData.detail,
+                  source: cardData.source || "Sentinel AI Analysis",
+                  confidence: cardData.confidence || 0.8,
+                  connections: cardData.connectTo || [],
+                  metadata: { agentGenerated: true },
+                };
+                send("card", card);
+                if (Array.isArray(cardData.connectTo)) {
+                  for (const targetId of cardData.connectTo) {
+                    send("connection", { from: id, to: targetId });
+                  }
+                }
+                await new Promise((r) => setTimeout(r, 500));
+              }
+            }
+
+            if (typeof synthesis.threatScore === "number") {
+              send("threat_score", { score: synthesis.threatScore });
+            }
+            if (synthesis.narration) {
+              send("narration", { text: synthesis.narration });
+            }
+            if (synthesis.threatReasoning) {
+              send("narration", { text: `Updated assessment: ${synthesis.threatReasoning}` });
+            }
+          } catch (parseError) {
+            console.error("Failed to parse synthesis:", parseError);
+            send("narration", { text: textContent.text });
+          }
         }
       }
 
