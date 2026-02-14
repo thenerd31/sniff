@@ -397,7 +397,7 @@ async function checkBrandImpersonation(product: ProductResult): Promise<FraudChe
 async function checkPageRedFlags(product: ProductResult): Promise<FraudCheck> {
   try {
     const retailerUrl = domainToUrl(product.domain);
-    const cards = await scrapeForRedFlags(retailerUrl);
+    const cards = await scrapeForRedFlags(retailerUrl, product.title);
 
     // Find the worst red flag
     const critical = cards.find((c) => c.severity === "critical");
