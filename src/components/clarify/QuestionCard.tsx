@@ -84,7 +84,7 @@ export function QuestionCard({
 
   return (
     <div
-      className="w-full max-w-lg mx-auto"
+      className="w-full max-w-xl mx-auto"
       style={{
         animation: "clarify-card-enter 0.4s ease-out both",
       }}
@@ -112,13 +112,13 @@ export function QuestionCard({
       )}
 
       {/* Main pixel frame card */}
-      <div className="pixel-frame p-6">
+      <div className="pixel-frame p-8">
         {/* Question counter */}
         <div className="flex items-center justify-between mb-4">
           <span
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 7,
+              fontSize: 9,
               color: "#8B6914",
             }}
           >
@@ -144,10 +144,10 @@ export function QuestionCard({
 
         {/* Category label */}
         <div
-          className="inline-block px-3 py-1 mb-3"
+          className="inline-block px-4 py-1.5 mb-4"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 7,
+            fontSize: 9,
             color: "#FFF8E8",
             background: "#8B6914",
             border: "2px solid #1A1A1A",
@@ -157,13 +157,13 @@ export function QuestionCard({
         </div>
 
         {/* Question text with typing animation */}
-        <div className="mb-5 min-h-[32px]">
+        <div className="mb-6 min-h-[40px]">
           <p
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 9,
+              fontSize: 11,
               color: "#1A1A1A",
-              lineHeight: 1.6,
+              lineHeight: 1.7,
             }}
           >
             {typedText}
@@ -191,12 +191,15 @@ export function QuestionCard({
                 key={option}
                 onClick={() => handleOptionClick(option)}
                 disabled={!!selectedValue}
-                className={`clarify-pixel-btn px-4 py-3 text-center ${
+                className={`clarify-pixel-btn px-5 py-4 text-center ${
                   selectedValue === option ? "selected" : ""
                 }`}
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 7,
+                  fontSize: 10,
+                  color: selectedValue === option ? "#FFFFFF" : "#1A1A1A",
+                  fontWeight: "bold",
+                  letterSpacing: "0.5px",
                   animation: `option-pop 0.25s ease-out ${i * 0.08}s both${
                     selectedValue === option
                       ? `, option-selected 0.2s ease-out 0s both`

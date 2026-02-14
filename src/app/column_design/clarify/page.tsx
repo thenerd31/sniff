@@ -206,7 +206,7 @@ export default function ClarifyTestPage() {
                 color: "#6B7280",
               }}
             >
-              In production, this navigates to /board_test
+              In production, information has been sent to research.
             </p>
           </div>
         )}
