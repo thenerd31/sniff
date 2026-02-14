@@ -73,3 +73,47 @@ export type SSEEvent =
   | { event: "narration"; data: { text: string } }
   | { event: "done"; data: { summary: string } }
   | { event: "error"; data: { message: string } };
+
+// ── Shopping Agent Types ───────────────────────────────────────────────
+
+export type AgentPhase =
+  | "idle"
+  | "searching"
+  | "reviewing"
+  | "swiping"
+  | "sorting"
+  | "picked"
+  | "saved";
+
+export interface ShoppingQuery {
+  text: string;
+  imageFile?: File;
+}
+
+export interface FraudMarker {
+  type: CardType;
+  severity: CardSeverity;
+  label: string;
+  detail: string;
+  source: string;
+}
+
+export interface ShoppingResult {
+  id: string;
+  product: {
+    name: string;
+    price: number;
+    currency: string;
+    retailer: string;
+    url: string;
+    imageUrl?: string;
+    inStock: boolean;
+  };
+  fraud: {
+    score: number;
+    isSafe: boolean;
+    markers: FraudMarker[];
+  };
+  evidenceCards: EvidenceCard[];
+  dismissed: boolean;
+}
