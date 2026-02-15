@@ -20,11 +20,14 @@ const HIGH_AUTHORITY_DOMAINS = new Set([
   "ebay.com", "walmart.com", "target.com", "bestbuy.com", "etsy.com",
   "shopify.com", "aliexpress.com", "rakuten.com", "wayfair.com",
   "costco.com", "homedepot.com", "lowes.com", "macys.com",
-  "nordstrom.com", "zappos.com", "chewy.com", "kohls.com",
+  "nordstrom.com", "nordstromrack.com", "zappos.com", "chewy.com", "kohls.com",
   "jcpenney.com", "samsclub.com", "overstock.com", "newegg.com",
   "bhphotovideo.com", "adorama.com", "gamestop.com",
   "dickssportinggoods.com", "academy.com", "rei.com",
   "sephora.com", "ulta.com", "bathandbodyworks.com",
+  "6pm.com", "dsw.com", "famousfootwear.com", "shoecarnival.com",
+  "sierra.com", "tjmaxx.com", "marshalls.com", "homegoods.com",
+  "burlington.com", "rossthings.com",
 
   // Fashion / Apparel
   "hm.com", "zara.com", "uniqlo.com", "asos.com", "gap.com",
@@ -33,6 +36,9 @@ const HIGH_AUTHORITY_DOMAINS = new Set([
   "brooksbrothers.com", "jcrew.com", "anthropologie.com",
   "urbanoutfitters.com", "freepeople.com", "forever21.com",
   "shein.com", "ssense.com", "farfetch.com", "mrporter.com",
+  "menswearhouse.com", "josbank.com", "express.com",
+  "bananarepublic.com", "abercrombie.com", "hollisterco.com",
+  "ae.com", "aerie.com",
 
   // Electronics / Tech brands
   "samsung.com", "sony.com", "dell.com", "hp.com", "lenovo.com",
