@@ -155,17 +155,20 @@ export type RefineResult =
       internalReasoning: string;
     }
   | {
-      type: "confirm";
-      refinedQuery: string;
-      searchQueries: string[];
-      internalReasoning: string;
-    }
-  | {
       type: "ready";
       refinedQuery: string;
       searchQueries: string[];
       internalReasoning: string;
     };
+
+// ── Results UI Phase (animation state machine) ───────────────────────────
+
+export type ResultsPhase =
+  | "hidden"
+  | "two-columns"
+  | "wiping"
+  | "shuffling"
+  | "final-list";
 
 export type SearchSSEEvent =
   | { event: "narration"; data: { text: string } }

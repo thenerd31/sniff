@@ -93,7 +93,7 @@ export async function refineQuery(
   const raw = JSON.parse(choices[0]?.message?.content ?? "{}");
   const reasoning: string = typeof raw.internalReasoning === "string" ? raw.internalReasoning : "";
 
-  // ── Specific enough → confirm with user, or go straight to search ────────
+  // ── Specific enough → ready to search ────────────────────────────────────
   if (raw.isSpecific || forceSearch) {
     // Build a fallback refined query from the full history if LLM didn't provide one
     const refinedQuery: string =
@@ -108,12 +108,7 @@ export async function refineQuery(
         ? raw.searchQueries.filter((q: unknown) => typeof q === "string")
         : [refinedQuery];
 
-    // forceSearch = user explicitly finalized → ready to search
-    // otherwise = agent thinks it's specific → ask user to confirm or refine further
-    if (forceSearch) {
-      return { type: "ready", refinedQuery, searchQueries, internalReasoning: reasoning };
-    }
-    return { type: "confirm", refinedQuery, searchQueries, internalReasoning: reasoning };
+    return { type: "ready", refinedQuery, searchQueries, internalReasoning: reasoning };
   }
 
   // ── Needs clarification → return question ─────────────────────────────────

@@ -42,7 +42,6 @@ async function triggerAndPoll(
   if (!key) return [];
 
   try {
-    console.log(`Bright Data: triggering dataset ${datasetId} with ${input.length} inputs`);
     const response = await fetch(
       `https://api.brightdata.com/datasets/v3/trigger?dataset_id=${datasetId}&include_errors=true&format=json`,
       {
@@ -68,11 +67,7 @@ async function triggerAndPoll(
 
     // Need to poll
     const snapshotId = triggerData.snapshot_id;
-    if (!snapshotId) {
-      console.log("Bright Data: no snapshot_id returned");
-      return [];
-    }
-    console.log(`Bright Data: polling snapshot ${snapshotId} (timeout: ${timeoutSec}s)`);
+    if (!snapshotId) return [];
 
     for (let i = 0; i < timeoutSec; i++) {
       await new Promise((r) => setTimeout(r, 1000));
@@ -162,7 +157,7 @@ export async function scrapeOriginalProduct(url: string): Promise<EvidenceCard |
   const datasetId = datasetMap[retailer];
   if (!datasetId) return null;
 
-  const results = await triggerAndPoll(datasetId, [{ url }], 20);
+  const results = await triggerAndPoll(datasetId, [{ url }]);
   if (results.length === 0) return null;
 
   return toCard(results[0], retailer, "Bright Data Scraper");

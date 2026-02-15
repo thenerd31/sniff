@@ -15,21 +15,7 @@
 //   investigate <url>       — POST /api/investigate (SSE stream)
 //   compare <url>           — POST /api/compare (SSE stream)
 
-import * as readline from "readline";
-
 const BASE = `http://localhost:${process.env.PORT ?? 3000}`;
-
-// ── Interactive prompt ────────────────────────────────────────────────────────
-
-function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
 
 // ── ANSI colours ──────────────────────────────────────────────────────────────
 const C = {
@@ -188,8 +174,8 @@ function printSSEEvent(event: string, data: unknown): boolean {
 }
 
 // ── Subcommand: refine ────────────────────────────────────────────────────────
-// Loops POST /api/shop/refine until type="ready". Simulates a user who picks
-// the first option for clarifying questions, then auto-finalizes on "confirm".
+// Loops POST /api/shop/refine until type="ready", simulating a user who picks
+// the first option each time.
 
 async function cmdRefine(query: string): Promise<void> {
   hr("POST /api/shop/refine  (Guided Discovery loop)");
@@ -228,70 +214,19 @@ async function cmdRefine(query: string): Promise<void> {
       break;
     }
 
-    if (result.type === "confirm") {
-      // Agent thinks query is specific enough — user decides
-      console.log(`\n  ${C.magenta}[confirm]${C.reset} Agent proposes:`);
-      console.log(`    ${C.bold}refinedQuery:${C.reset}  ${result.refinedQuery}`);
-      console.log(`    ${C.bold}searchQueries:${C.reset}`);
-      for (const q of result.searchQueries as string[]) {
-        console.log(`      • ${q}`);
-      }
-      console.log(`\n  ${C.cyan}1)${C.reset} Search with this query`);
-      console.log(`  ${C.cyan}2)${C.reset} Add more detail\n`);
-
-      const choice = await prompt(`  ${C.bold}Your choice (1/2):${C.reset} `);
-
-      if (choice === "2") {
-        const extra = await prompt(`  ${C.bold}What else?${C.reset} `);
-        history.push({ role: "assistant", content: `I've refined your query to: "${result.refinedQuery}". Anything else you'd like to add?` });
-        history.push({ role: "user", content: extra });
-        console.log();
-        continue;
-      }
-
-      // Finalize
-      const finalRes = await fetch(`${BASE}/api/shop/refine`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, history, forceSearch: true }),
-      });
-      if (!finalRes.ok) {
-        console.error(`${C.red}HTTP ${finalRes.status}:${C.reset} ${await finalRes.text()}`);
-        process.exit(1);
-      }
-      const finalResult = await finalRes.json() as Record<string, unknown>;
-      hr("Result: ready to search");
-      console.log(`  ${C.green}refinedQuery:${C.reset}  ${finalResult.refinedQuery}`);
-      console.log(`  ${C.green}searchQueries:${C.reset}`);
-      for (const q of finalResult.searchQueries as string[]) {
-        console.log(`    • ${q}`);
-      }
-      break;
-    }
-
     if (result.type === "question") {
       const opts = result.options as Array<{ label: string; description: string; value: string }>;
       console.log(`\n  ${C.yellow}Question:${C.reset} ${result.question}`);
       for (let i = 0; i < opts.length; i++) {
-        console.log(`  ${C.cyan}${i + 1})${C.reset} ${C.bold}${opts[i].label}${C.reset}  ${C.gray}${opts[i].description}${C.reset}`);
-      }
-      console.log(`  ${C.cyan}c)${C.reset} ${C.dim}Type your own answer${C.reset}\n`);
-
-      const choice = await prompt(`  ${C.bold}Your choice (1-${opts.length}/c):${C.reset} `);
-
-      let userValue: string;
-      if (choice.toLowerCase() === "c") {
-        userValue = await prompt(`  ${C.bold}Your answer:${C.reset} `);
-      } else {
-        const idx = parseInt(choice, 10) - 1;
-        const chosen = opts[idx] ?? opts[0];
-        userValue = chosen.value;
-        console.log(`  ${C.dim}→ "${chosen.label}"${C.reset}`);
+        const marker = i === 0 ? `${C.green}→${C.reset}` : " ";
+        console.log(`  ${marker} ${C.bold}${opts[i].label}${C.reset}  ${C.gray}${opts[i].description}${C.reset}`);
       }
 
+      // Auto-pick the first option
+      const chosen = opts[0];
+      console.log(`\n  ${C.dim}[auto-selecting first option: "${chosen.label}"]${C.reset}\n`);
       history.push({ role: "assistant", content: result.question as string });
-      history.push({ role: "user",      content: userValue });
-      console.log();
+      history.push({ role: "user",      content: chosen.value });
     }
   }
 }

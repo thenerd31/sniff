@@ -2,14 +2,12 @@
 // POST /api/shop/refine
 //
 // The "Guided Discovery" clarification loop.
-// Accepts the current query + conversation history, returns one of:
-//   { type: "question", question, options, internalReasoning }  — needs clarification
-//   { type: "confirm",  refinedQuery, searchQueries, ... }      — agent thinks query is ready; user decides to finalize or keep refining
-//   { type: "ready",    refinedQuery, searchQueries, ... }      — only returned when forceSearch=true (user explicitly finalized)
+// Accepts the current query + conversation history, returns either:
+//   { type: "question", question, options, internalReasoning }
+//   { type: "ready",    refinedQuery, searchQueries, internalReasoning }
 //
-// Flow: caller loops until type="confirm", then user either:
-//   a) sends forceSearch=true → type="ready" → fire /api/shop
-//   b) adds more detail → continues the loop
+// The caller keeps sending updated history until type="ready",
+// then fires /api/shop with the refinedQuery / searchQueries.
 //
 // Body:
 //   query        — the user's original / current query (required)

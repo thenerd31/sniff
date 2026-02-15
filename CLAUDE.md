@@ -104,7 +104,7 @@ Key shared types:
 - `ProductResult` — raw product from Google Shopping
 - `FraudCheck` — individual check result (name, status, detail, severity 0–1)
 - `ProductVerdict` — `"trusted" | "caution" | "danger"`
-- `RefineResult` — `{ type: "question", ... } | { type: "confirm", ... } | { type: "ready", ... }`
+- `RefineResult` — `{ type: "question", ... } | { type: "ready", ... }`
 - `ConversationMessage`, `RefinementOption` — Guided Discovery types
 - `SSEEvent`, `SearchSSEEvent` — typed SSE event unions
 
@@ -154,14 +154,10 @@ const resolve = (href: string) => {
 `validate-product.ts` has a `FATAL_FLAGS` array checked before normal additive scoring. Matches (e.g. known malware site, implausible domain) short-circuit the score to 0 or 5.
 
 ### Guided Discovery flow
-Only the **user** can finalize a query — the agent never auto-searches.
 1. Frontend: `POST /api/shop/refine { query, history }` → `{ type: "question", ... }` — loop
 2. Frontend: user picks option → append to history, repeat
-3. Frontend: `POST /api/shop/refine { query, history }` → `{ type: "confirm", refinedQuery, searchQueries }` — agent thinks it's ready
-4. User decides:
-   - **Finalize:** `POST /api/shop/refine { query, history, forceSearch: true }` → `{ type: "ready", ... }`
-   - **Keep refining:** user adds more detail → back to step 1
-5. Frontend: `POST /api/shop { searchQueries }` → SSE stream
+3. Frontend: `POST /api/shop/refine { query, history }` → `{ type: "ready", refinedQuery, searchQueries }`
+4. Frontend: `POST /api/shop { searchQueries }` → SSE stream
 
 ## Environment Variables
 
