@@ -10,6 +10,7 @@ import type {
   ProductWithVerdict,
   ResultsPhase,
 } from "@/types";
+import { useSavedDashboardStore } from "./savedDashboardStore";
 
 interface ResultsState {
   phase: ResultsPhase;
@@ -83,10 +84,30 @@ export const useResultsStore = create<ResultsState>((set) => ({
 
   toggleSave: (productId) =>
     set((state) => {
-      const next = state.savedItems.includes(productId)
+      const isSaved = state.savedItems.includes(productId);
+      const next = isSaved
         ? state.savedItems.filter((id) => id !== productId)
         : [...state.savedItems, productId];
       persistSavedItems(next);
+
+      // Sync with dashboard store
+      const dashStore = useSavedDashboardStore.getState();
+      if (isSaved) {
+        dashStore.removeProduct(productId);
+      } else {
+        // Build the full ProductWithVerdict snapshot
+        const product = state.products[productId];
+        const verdict = state.verdicts[productId];
+        if (product && verdict) {
+          dashStore.saveProduct({
+            ...product,
+            checks: state.checks[productId] || [],
+            verdict: verdict.verdict,
+            trustScore: verdict.trustScore,
+          });
+        }
+      }
+
       return { savedItems: next };
     }),
 
