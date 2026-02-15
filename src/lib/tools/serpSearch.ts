@@ -237,54 +237,8 @@ export async function searchProducts(
     products = await searchProductsPerplexity(queries, maxResults);
   }
 
-  // Inject demo scam listings for known demo queries
-  products = injectDemoScamListings(products, queries);
-
   // Filter out dead/fabricated links before returning
   return filterReachableProducts(products);
-}
-
-// ── Demo scam injection ───────────────────────────────────────────────────
-// For demo reliability, inject a known scam listing when the query matches.
-// These are REAL scam sites — the fraud checks will genuinely flag them.
-
-const DEMO_SCAM_LISTINGS: Array<{
-  queryMatch: RegExp;
-  product: Omit<ProductResult, "id">;
-}> = [
-  {
-    queryMatch: /sony|headphone|xm5|xm4|wh-?1000/i,
-    product: {
-      title: "Sony WH-1000XM5 Wireless Noise Canceling Headphones Black",
-      price: 84.0,
-      currency: "USD",
-      retailer: "Best Deals & Prices Online",
-      domain: "ivanna.kmikd.com",
-      url: "https://ivanna.kmikd.com/index.php?route=product/product&product_id=16476204",
-      rating: 4.9,
-      reviewCount: 3,
-      snippet: "LIMITED TIME — 70% OFF",
-    },
-  },
-];
-
-function injectDemoScamListings(
-  products: ProductResult[],
-  queries: string[],
-): ProductResult[] {
-  const queryStr = queries.join(" ");
-  const injected = [...products];
-
-  for (const { queryMatch, product } of DEMO_SCAM_LISTINGS) {
-    if (!queryMatch.test(queryStr)) continue;
-    // Don't inject if already present
-    if (injected.some((p) => p.domain === product.domain)) continue;
-    // Insert in the middle-ish so it doesn't look planted
-    const insertIdx = Math.min(3, injected.length);
-    injected.splice(insertIdx, 0, { ...product, id: uuidv4() });
-  }
-
-  return injected;
 }
 
 async function searchViaBrightData(
