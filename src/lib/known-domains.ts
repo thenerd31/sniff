@@ -43,6 +43,8 @@ const HIGH_AUTHORITY_DOMAINS = new Set([
   // Electronics / Tech brands
   "samsung.com", "sony.com", "dell.com", "hp.com", "lenovo.com",
   "asus.com", "bose.com", "lg.com", "canon.com", "nikon.com",
+  "redragon.com", "microcenter.com", "corsair.com", "logitech.com",
+  "razer.com", "steelseries.com", "hyperxgaming.com",
 
   // Finance
   "paypal.com", "stripe.com", "chase.com", "bankofamerica.com",
