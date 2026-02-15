@@ -32,7 +32,7 @@ export function QuestionCard({
   );
 
   const isSpectrum = refinement.type === "spectrum" && refinement.spectrumRange;
-  const questionText = `What ${refinement.label.toLowerCase()} are you looking for?`;
+  const questionText = refinement.questionText || `What ${refinement.label.toLowerCase()} are you looking for?`;
 
   // Typing animation
   useEffect(() => {

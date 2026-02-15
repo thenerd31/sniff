@@ -289,7 +289,7 @@ const SEVERITY_COLORS: Record<CardSeverity, { border: string; bg: string; accent
   safe:     { border: "#006400", bg: "#F0FFF0", accent: "#00CC00", text: "#006400", barColor: "#00CC00", label: "SAFE" },
 };
 
-const TYPE_ICONS: Record<CardType, React.FC<{ className?: string }>> = {
+const TYPE_ICONS: Record<CardType, React.FC<{ className?: string; style?: React.CSSProperties }>> = {
   domain: Globe,
   ssl: Lock,
   scam_report: MessageSquare,
@@ -756,7 +756,9 @@ function CloudNode({ cloud, index }: { cloud: CloudData; index: number }) {
             width: "32%",
             height: 18,
             background: "#FFF8E8",
-            border: `4px solid ${borderColor}`,
+            borderTop: `4px solid ${borderColor}`,
+            borderLeft: `4px solid ${borderColor}`,
+            borderRight: `4px solid ${borderColor}`,
             borderBottom: `4px solid #FFF8E8`,
             imageRendering: "pixelated",
             zIndex: 1,
@@ -771,7 +773,9 @@ function CloudNode({ cloud, index }: { cloud: CloudData; index: number }) {
             width: "24%",
             height: 14,
             background: "#FFF8E8",
-            border: `4px solid ${borderColor}`,
+            borderTop: `4px solid ${borderColor}`,
+            borderLeft: `4px solid ${borderColor}`,
+            borderRight: `4px solid ${borderColor}`,
             borderBottom: `4px solid #FFF8E8`,
             imageRendering: "pixelated",
             zIndex: 1,
@@ -1084,7 +1088,9 @@ function DiggingPlaceholder() {
 
 export default function BoardPage() {
   const searchParams = useSearchParams();
-  const targetUrl = searchParams.get("url") || "https://www.example.com";
+  const query = searchParams.get("query") || "";
+  const targetUrl = searchParams.get("url") || "";
+  const displayLabel = query || targetUrl || "https://www.example.com";
 
   const [clouds, setClouds] = useState<CloudData[]>([]);
   const [dogIndex, setDogIndex] = useState(0);
@@ -1184,101 +1190,235 @@ export default function BoardPage() {
     const heroCloud: CloudData = {
       id: "hero",
       type: "hero",
-      url: targetUrl,
+      url: displayLabel,
       threatScore: 0,
       status: "investigating",
       summary: "",
     };
     setClouds([heroCloud]);
     setDogIndex(0);
-  }, [targetUrl]);
+  }, [displayLabel]);
 
-  // Run demo events
+  // Run real API search
   useEffect(() => {
+    if (!query && !targetUrl) return;
     if (hasStarted.current) return;
     hasStarted.current = true;
 
-    let cancelled = false;
+    const store = useResultsStore.getState();
+    store.reset();
 
-    async function runDemo() {
-      for (const evt of DEMO_EVENTS) {
-        if (cancelled) break;
-        await new Promise((r) => setTimeout(r, evt.delay));
-        if (cancelled) break;
+    const abortController = new AbortController();
 
-        switch (evt.event) {
-          case "log": {
-            addLog(evt.data.text);
-            break;
-          }
-          case "card": {
-            const card = evt.data as EvidenceCard;
-            const currentIndex = cardCountRef.current;
-            cardCountRef.current++;
-            addLog(`Evidence found: ${card.title}`);
+    function handleSSEEvent(event: string, data: Record<string, unknown>) {
+      switch (event) {
+        case "narration":
+          addLog(data.text as string);
+          break;
 
-            const newCloud: CloudData = {
-              id: card.id,
-              type: "evidence",
-              card: { ...card, isNew: true },
-            };
-            setClouds((prev) => [...prev, newCloud]);
+        case "product": {
+          const product = data as unknown as ProductResult;
+          store.addProduct(product);
 
-            // Move dog to new cloud
-            const newDogIdx = currentIndex + 1;
-            setDogMoving(true);
-            setDogIndex(newDogIdx);
-            setTimeout(() => setDogMoving(false), 800);
+          const currentIndex = cardCountRef.current;
+          cardCountRef.current++;
+          addLog(`Found: $${product.price} at ${product.retailer}`);
 
-            // Auto-scroll
-            setTimeout(() => scrollToLatestCloud(), 100);
+          const card: EvidenceCard = {
+            id: product.id,
+            type: "price",
+            severity: "info",
+            title: `$${product.price.toFixed(2)} — ${product.retailer}`,
+            detail: product.title.slice(0, 100),
+            source: product.domain,
+            confidence: 0.5,
+            connections: [],
+            metadata: {},
+          };
 
-            // Clear isNew flag
-            setTimeout(() => {
-              setClouds((prev) =>
-                prev.map((c) =>
-                  c.id === card.id && c.card
-                    ? { ...c, card: { ...c.card, isNew: false } }
-                    : c
-                )
-              );
-            }, 2500);
-            break;
-          }
-          case "connection": {
-            break;
-          }
-          case "threat_score": {
-            const score = evt.data.score;
-            setThreatScore(score);
+          const newCloud: CloudData = {
+            id: product.id,
+            type: "evidence",
+            card: { ...card, isNew: true },
+          };
+          setClouds((prev) => [...prev, newCloud]);
+
+          const newDogIdx = currentIndex + 1;
+          setDogMoving(true);
+          setDogIndex(newDogIdx);
+          setTimeout(() => setDogMoving(false), 800);
+          setTimeout(() => scrollToLatestCloud(), 100);
+          setTimeout(() => {
             setClouds((prev) =>
               prev.map((c) =>
-                c.id === "hero" ? { ...c, threatScore: score } : c
-              )
-            );
-            break;
-          }
-          case "done": {
-            setStatus("complete");
-            setSummary(evt.data.summary);
-            addLog("Quest complete!");
-            setClouds((prev) =>
-              prev.map((c) =>
-                c.id === "hero"
-                  ? { ...c, status: "complete" as const, summary: evt.data.summary }
+                c.id === product.id && c.card
+                  ? { ...c, card: { ...c.card, isNew: false } }
                   : c
               )
             );
-            seedResultsStore();
-            break;
+          }, 2500);
+          break;
+        }
+
+        case "card": {
+          const card = data as unknown as EvidenceCard;
+          const currentIndex = cardCountRef.current;
+          cardCountRef.current++;
+          addLog(`Evidence found: ${card.title}`);
+
+          const newCloud: CloudData = {
+            id: card.id,
+            type: "evidence",
+            card: { ...card, isNew: true },
+          };
+          setClouds((prev) => [...prev, newCloud]);
+
+          const newDogIdx = currentIndex + 1;
+          setDogMoving(true);
+          setDogIndex(newDogIdx);
+          setTimeout(() => setDogMoving(false), 800);
+          setTimeout(() => scrollToLatestCloud(), 100);
+          setTimeout(() => {
+            setClouds((prev) =>
+              prev.map((c) =>
+                c.id === card.id && c.card
+                  ? { ...c, card: { ...c.card, isNew: false } }
+                  : c
+              )
+            );
+          }, 2500);
+          break;
+        }
+
+        case "fraud_check": {
+          const { productId, check } = data as { productId: string; check: FraudCheck };
+          store.addFraudCheck(productId, check);
+          addLog(`${check.name}: ${check.status} — ${(productId as string).slice(0, 8)}`);
+
+          if (check.status === "failed") {
+            setClouds((prev) =>
+              prev.map((c) =>
+                c.id === productId && c.card
+                  ? { ...c, card: { ...c.card, severity: "critical" as CardSeverity } }
+                  : c
+              )
+            );
           }
+          break;
+        }
+
+        case "verdict": {
+          const { productId, verdict, trustScore: ts } = data as { productId: string; verdict: string; trustScore: number };
+          store.setVerdict(productId, verdict as ProductVerdict, ts);
+          addLog(`Verdict: ${verdict.toUpperCase()} (${ts}/100)`);
+
+          const sev: CardSeverity = verdict === "trusted" ? "safe" : verdict === "danger" ? "critical" : "warning";
+          setClouds((prev) =>
+            prev.map((c) =>
+              c.id === productId && c.card
+                ? { ...c, card: { ...c.card, severity: sev, confidence: ts / 100 } }
+                : c
+            )
+          );
+          break;
+        }
+
+        case "all_products":
+          addLog(`${data.count} products found. Running security checks...`);
+          break;
+
+        case "best_pick":
+          store.setBestPick(data.productId as string);
+          addLog("Best deal identified!");
+          break;
+
+        case "threat_score": {
+          const score = data.score as number;
+          setThreatScore(score);
+          setClouds((prev) =>
+            prev.map((c) =>
+              c.id === "hero" ? { ...c, threatScore: score } : c
+            )
+          );
+          break;
+        }
+
+        case "connection":
+          break;
+
+        case "done": {
+          store.setDoneSummary(data.summary as string);
+          store.setPhase("two-columns");
+          setStatus("complete");
+          setSummary(data.summary as string);
+          addLog("Quest complete!");
+          setClouds((prev) =>
+            prev.map((c) =>
+              c.id === "hero"
+                ? { ...c, status: "complete" as const, summary: data.summary as string }
+                : c
+            )
+          );
+          break;
+        }
+
+        case "error":
+          addLog(`!! ERROR: ${data.message}`);
+          setStatus("complete");
+          break;
+      }
+    }
+
+    async function runRealSearch() {
+      try {
+        const body: Record<string, string> = {};
+        if (query) body.query = query;
+        else if (targetUrl) body.url = targetUrl;
+
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          addLog("Error: Search failed");
+          setStatus("complete");
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            try {
+              const parsed = JSON.parse(line.slice(6));
+              handleSSEEvent(parsed.event, parsed.data);
+            } catch { /* skip unparseable */ }
+          }
+        }
+      } catch (err) {
+        if (!abortController.signal.aborted) {
+          addLog("Connection lost");
+          setStatus("complete");
         }
       }
     }
 
-    runDemo();
-    return () => { cancelled = true; };
-  }, [scrollToLatestCloud]);
+    runRealSearch();
+    return () => { abortController.abort(); };
+  }, [query, targetUrl, scrollToLatestCloud]);
 
   // Compute dog X from DOM after renders
   const [dogX, setDogX] = useState(0);
@@ -1320,7 +1460,7 @@ export default function BoardPage() {
         >
           <Search className="h-3 w-3 shrink-0" style={{ color: "#8B6914" }} />
           <span className="truncate" style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#4A3A2A" }}>
-            {targetUrl}
+            {displayLabel}
           </span>
         </div>
 
