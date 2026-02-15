@@ -59,22 +59,22 @@ function FraudCheckRow({ check }: { check: FraudCheck }) {
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 10,
             color: statusInfo.color,
-            width: 12,
+            width: 14,
             textAlign: "center",
           }}
         >
           {statusInfo.char}
         </span>
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#1A1A1A", flex: 1 }}>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#1A1A1A", flex: 1 }}>
           {check.name}
         </span>
       </div>
-      <p className="mb-1 ml-[20px]" style={{ fontFamily: PIXEL_FONT, fontSize: 5, lineHeight: 1.8, color: "#4A3A2A" }}>
+      <p className="mb-1 ml-[22px]" style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 1.8, color: "#1A1A1A" }}>
         {check.detail}
       </p>
-      <div className="ml-[20px]">
+      <div className="ml-[22px]">
         <PixelSeverityBar severity={check.severity} />
       </div>
     </div>
@@ -89,7 +89,7 @@ export function CardBack({ product }: CardBackProps) {
 
   return (
     <div
-      className="w-full h-full flex flex-col p-4"
+      className="w-full h-full flex flex-col overflow-hidden p-5"
       style={{
         border: "4px solid #1A1A1A",
         borderRadius: 0,
@@ -114,7 +114,7 @@ export function CardBack({ product }: CardBackProps) {
         style={{ borderBottom: "3px solid #1A1A1A", position: "relative", zIndex: 1 }}
       >
         {/* Pixel shield icon */}
-        <svg width="14" height="14" viewBox="0 0 8 8" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+        <svg width="16" height="16" viewBox="0 0 8 8" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
           <rect x="2" y="0" width="4" height="1" fill={verdictColor} />
           <rect x="1" y="1" width="6" height="1" fill={verdictColor} />
           <rect x="1" y="2" width="6" height="1" fill={verdictColor} />
@@ -123,14 +123,14 @@ export function CardBack({ product }: CardBackProps) {
           <rect x="2" y="5" width="4" height="1" fill={verdictColor} />
           <rect x="3" y="6" width="2" height="1" fill={verdictColor} />
         </svg>
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A" }}>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#1A1A1A" }}>
           SCAN LOG
         </span>
         <span
           className="ml-auto"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 10,
+            fontSize: 12,
             color: verdictColor,
           }}
         >
@@ -139,13 +139,13 @@ export function CardBack({ product }: CardBackProps) {
       </div>
 
       {/* Fraud checks */}
-      <div className="flex-1 overflow-y-auto" style={{ position: "relative", zIndex: 1 }}>
+      <div className="flex-1" style={{ position: "relative", zIndex: 1 }}>
         {product.checks.length > 0 ? (
           product.checks.map((check, i) => (
             <FraudCheckRow key={`${check.name}-${i}`} check={check} />
           ))
         ) : (
-          <p className="text-center py-4" style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
+          <p className="text-center py-4" style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#8B6914" }}>
             NO DATA FOUND
           </p>
         )}
@@ -153,7 +153,7 @@ export function CardBack({ product }: CardBackProps) {
 
       {/* Domain footer */}
       <div className="mt-2 pt-2" style={{ borderTop: "2px solid #1A1A1A40", position: "relative", zIndex: 1 }}>
-        <p className="text-center" style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#8B6914" }}>
+        <p className="text-center" style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A" }}>
           {product.domain}
         </p>
       </div>

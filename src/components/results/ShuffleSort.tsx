@@ -111,7 +111,7 @@ export function ShuffleSort({ products, onComplete }: ShuffleSortProps) {
                 product={product}
                 isSaved={savedItems.includes(product.id)}
                 onToggleSave={() => toggleSave(product.id)}
-                className="w-[240px] h-[320px]"
+                className="w-[240px] h-[400px]"
               />
             </div>
           );
