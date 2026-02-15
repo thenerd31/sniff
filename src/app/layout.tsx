@@ -20,9 +20,16 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Sniff — Your Personal Shopping Assistant",
+  title: "Sniff - Your Personal Shopping Assistant",
   description:
     "Find the best deals, uncover hidden markups, and save money on every purchase with AI-powered price discovery.",
+  icons: {
+    icon: [
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
