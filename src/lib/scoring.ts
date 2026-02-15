@@ -81,6 +81,16 @@ export function computeFinalThreatScore(
     return 75;
   }
 
+  // ── Tier 2.5: Critical seller failure → HIGH RISK ──────────────────
+  // Bad seller signals: account < 3 months, rating < 3.5★, fake reviews
+  const hasFailedSeller = cards.some(
+    (c) => c.source === "Seller Verification" && c.severity === "critical"
+  );
+
+  if (hasFailedSeller) {
+    return 65;
+  }
+
   // ── Tier 3: Scraper red flags → WARNING ────────────────────────────
   const scraperRedFlags = cards.filter(
     (c) =>

@@ -1,0 +1,502 @@
+[
+  {
+    "url": "https://google.com",
+    "category": "high_authority",
+    "reason": "World's largest search engine"
+  },
+  {
+    "url": "https://youtube.com",
+    "category": "high_authority",
+    "reason": "Largest video platform, Google-owned"
+  },
+  {
+    "url": "https://facebook.com",
+    "category": "high_authority",
+    "reason": "Largest social network"
+  },
+  {
+    "url": "https://amazon.com",
+    "category": "high_authority",
+    "reason": "Largest e-commerce platform"
+  },
+  {
+    "url": "https://wikipedia.org",
+    "category": "high_authority",
+    "reason": "Top open encyclopedia"
+  },
+  {
+    "url": "https://twitter.com",
+    "category": "high_authority",
+    "reason": "Major social media platform"
+  },
+  {
+    "url": "https://instagram.com",
+    "category": "high_authority",
+    "reason": "Major photo/video social platform, Meta-owned"
+  },
+  {
+    "url": "https://linkedin.com",
+    "category": "high_authority",
+    "reason": "Largest professional network, Microsoft-owned"
+  },
+  {
+    "url": "https://reddit.com",
+    "category": "high_authority",
+    "reason": "Major forum/community platform"
+  },
+  {
+    "url": "https://netflix.com",
+    "category": "high_authority",
+    "reason": "Top streaming service"
+  },
+  {
+    "url": "https://microsoft.com",
+    "category": "high_authority",
+    "reason": "Major tech company"
+  },
+  {
+    "url": "https://apple.com",
+    "category": "high_authority",
+    "reason": "Major tech company"
+  },
+  {
+    "url": "https://github.com",
+    "category": "high_authority",
+    "reason": "Largest code hosting platform"
+  },
+  {
+    "url": "https://stackoverflow.com",
+    "category": "high_authority",
+    "reason": "Top developer Q&A site"
+  },
+  {
+    "url": "https://bbc.com",
+    "category": "high_authority",
+    "reason": "Major global news organization"
+  },
+  {
+    "url": "https://nytimes.com",
+    "category": "high_authority",
+    "reason": "Major US newspaper"
+  },
+  {
+    "url": "https://cnn.com",
+    "category": "high_authority",
+    "reason": "Major news network"
+  },
+  {
+    "url": "https://ebay.com",
+    "category": "high_authority",
+    "reason": "Major online marketplace"
+  },
+  {
+    "url": "https://paypal.com",
+    "category": "high_authority",
+    "reason": "Major payment processor"
+  },
+  {
+    "url": "https://dropbox.com",
+    "category": "high_authority",
+    "reason": "Major cloud storage provider"
+  },
+  {
+    "url": "https://spotify.com",
+    "category": "high_authority",
+    "reason": "Top music streaming service"
+  },
+  {
+    "url": "https://zoom.us",
+    "category": "high_authority",
+    "reason": "Major video conferencing platform"
+  },
+  {
+    "url": "https://salesforce.com",
+    "category": "high_authority",
+    "reason": "Top CRM platform"
+  },
+  {
+    "url": "https://adobe.com",
+    "category": "high_authority",
+    "reason": "Major creative software company"
+  },
+  {
+    "url": "https://walmart.com",
+    "category": "high_authority",
+    "reason": "Largest US retailer"
+  },
+  {
+    "url": "https://target.com",
+    "category": "high_authority",
+    "reason": "Major US retailer"
+  },
+  {
+    "url": "https://bestbuy.com",
+    "category": "high_authority",
+    "reason": "Major electronics retailer"
+  },
+  {
+    "url": "https://chase.com",
+    "category": "high_authority",
+    "reason": "Major US bank"
+  },
+  {
+    "url": "https://bankofamerica.com",
+    "category": "high_authority",
+    "reason": "Major US bank"
+  },
+  {
+    "url": "https://wellsfargo.com",
+    "category": "high_authority",
+    "reason": "Major US bank"
+  },
+  {
+    "url": "https://imdb.com",
+    "category": "high_authority",
+    "reason": "Top movie/TV database, Amazon-owned"
+  },
+  {
+    "url": "https://twitch.tv",
+    "category": "high_authority",
+    "reason": "Top live streaming platform, Amazon-owned"
+  },
+  {
+    "url": "https://pinterest.com",
+    "category": "high_authority",
+    "reason": "Major visual discovery platform"
+  },
+  {
+    "url": "https://tumblr.com",
+    "category": "high_authority",
+    "reason": "Major blogging platform"
+  },
+  {
+    "url": "https://quora.com",
+    "category": "high_authority",
+    "reason": "Major Q&A platform"
+  },
+  {
+    "url": "https://medium.com",
+    "category": "high_authority",
+    "reason": "Major publishing platform"
+  },
+  {
+    "url": "https://slack.com",
+    "category": "high_authority",
+    "reason": "Major workplace messaging platform"
+  },
+  {
+    "url": "https://notion.so",
+    "category": "high_authority",
+    "reason": "Major productivity/wiki platform"
+  },
+  {
+    "url": "https://stripe.com",
+    "category": "high_authority",
+    "reason": "Major payment infrastructure"
+  },
+  {
+    "url": "https://shopify.com",
+    "category": "high_authority",
+    "reason": "Major e-commerce platform"
+  },
+  {
+    "url": "https://airbnb.com",
+    "category": "high_authority",
+    "reason": "Major travel/lodging marketplace"
+  },
+  {
+    "url": "https://uber.com",
+    "category": "high_authority",
+    "reason": "Major ride-sharing platform"
+  },
+  {
+    "url": "https://reuters.com",
+    "category": "high_authority",
+    "reason": "Major global news agency"
+  },
+  {
+    "url": "https://theguardian.com",
+    "category": "high_authority",
+    "reason": "Major UK/global newspaper"
+  },
+  {
+    "url": "https://washingtonpost.com",
+    "category": "high_authority",
+    "reason": "Major US newspaper"
+  },
+  {
+    "url": "https://wordpress.com",
+    "category": "high_authority",
+    "reason": "Top blogging/CMS platform"
+  },
+  {
+    "url": "https://cloudflare.com",
+    "category": "high_authority",
+    "reason": "Major CDN/security provider"
+  },
+  {
+    "url": "https://etsy.com",
+    "category": "high_authority",
+    "reason": "Major handmade/vintage marketplace"
+  },
+  {
+    "url": "https://hulu.com",
+    "category": "high_authority",
+    "reason": "Major streaming service, Disney-owned"
+  },
+  {
+    "url": "https://whatsapp.com",
+    "category": "high_authority",
+    "reason": "Top messaging app, Meta-owned"
+  },
+  {
+    "url": "https://berkshirehathaway.com",
+    "category": "hard_negative",
+    "reason": "Warren Buffett's $800B company — looks like a 1995 GeoCities page"
+  },
+  {
+    "url": "https://craigslist.org",
+    "category": "hard_negative",
+    "reason": "Major classifieds site with intentionally minimal/dated design"
+  },
+  {
+    "url": "https://arngren.net",
+    "category": "hard_negative",
+    "reason": "Norwegian electronics store — chaotic layout, looks like spam, completely legitimate"
+  },
+  {
+    "url": "https://www.lingscars.com",
+    "category": "hard_negative",
+    "reason": "Legitimate UK car leasing site — extreme visual chaos, animations, neon colors"
+  },
+  {
+    "url": "https://www.art.yale.edu",
+    "category": "hard_negative",
+    "reason": "Yale School of Art — community-edited site that looks intentionally broken/experimental"
+  },
+  {
+    "url": "https://motherfuckingwebsite.com",
+    "category": "hard_negative",
+    "reason": "Satire site about web design — plain text, no CSS, but legitimate and famous"
+  },
+  {
+    "url": "http://bettermotherfuckingwebsite.com",
+    "category": "hard_negative",
+    "reason": "Follow-up to above — minimal CSS, plain HTML, legitimate satire"
+  },
+  {
+    "url": "https://www.cs.utexas.edu/~EWD/",
+    "category": "hard_negative",
+    "reason": "Dijkstra's archive at UT Austin — ancient .edu page, no styling"
+  },
+  {
+    "url": "https://www.math.columbia.edu/~woit/wordpress/",
+    "category": "hard_negative",
+    "reason": "Columbia professor's physics blog — old WordPress theme, academic content"
+  },
+  {
+    "url": "https://stallman.org",
+    "category": "hard_negative",
+    "reason": "Richard Stallman's personal site — raw HTML, no CSS, looks sketchy but is the GNU founder"
+  },
+  {
+    "url": "http://www.dvdscreensaver.com",
+    "category": "hard_negative",
+    "reason": "Simple single-purpose site — DVD bouncing logo, looks like it could be malware but isn't"
+  },
+  {
+    "url": "https://www.fogcam.org",
+    "category": "hard_negative",
+    "reason": "One of the oldest webcams on the internet — ancient interface, legitimate SF State project"
+  },
+  {
+    "url": "https://www.spacejam.com/1996/",
+    "category": "hard_negative",
+    "reason": "Original 1996 Space Jam movie site preserved by Warner Bros — fully retro"
+  },
+  {
+    "url": "https://www.warnerbros.com/archive/spacejam/movie/jam.htm",
+    "category": "hard_negative",
+    "reason": "Alternate Space Jam archive URL — extreme 90s web design"
+  },
+  {
+    "url": "https://www.cam.ac.uk",
+    "category": "hard_negative",
+    "reason": "Cambridge University — legitimate but some subpages have dated designs"
+  },
+  {
+    "url": "http://info.cern.ch",
+    "category": "hard_negative",
+    "reason": "The first website ever created — restored by CERN, plain HTML"
+  },
+  {
+    "url": "https://www.gutenberg.org",
+    "category": "hard_negative",
+    "reason": "Project Gutenberg free ebook library — dated but extremely legitimate"
+  },
+  {
+    "url": "https://www.irs.gov",
+    "category": "hard_negative",
+    "reason": "US tax authority — government site that ironically looks less trustworthy than phishing copies"
+  },
+  {
+    "url": "https://www.usps.com",
+    "category": "hard_negative",
+    "reason": "US Postal Service — often impersonated, the real site has clunky UX"
+  },
+  {
+    "url": "https://www.dol.gov",
+    "category": "hard_negative",
+    "reason": "US Dept of Labor — .gov with outdated sections that look unofficial"
+  },
+  {
+    "url": "https://txti.es",
+    "category": "hard_negative",
+    "reason": "Minimal text-only web page creator — intentionally no styling, looks bare"
+  },
+  {
+    "url": "https://wiby.me",
+    "category": "hard_negative",
+    "reason": "Search engine for the old web — indexes plain HTML sites, looks DIY"
+  },
+  {
+    "url": "https://textfiles.com",
+    "category": "hard_negative",
+    "reason": "Archive of old BBS text files — raw HTML listing, legitimate digital preservation"
+  },
+  {
+    "url": "https://www.cameronsworld.net",
+    "category": "hard_negative",
+    "reason": "Web art collage of GeoCities pages — looks like malware explosion, is a museum piece"
+  },
+  {
+    "url": "http://www.dvdscreensaver.com",
+    "category": "hard_negative",
+    "reason": "Simple novelty site — looks like clickbait but is just the DVD logo"
+  },
+  {
+    "url": "https://www.arngren.net",
+    "category": "hard_negative",
+    "reason": "Norwegian electronics — visual overload, every product crammed on one page"
+  },
+  {
+    "url": "https://www.dokuwiki.org",
+    "category": "hard_negative",
+    "reason": "Open source wiki software — functional but dated design"
+  },
+  {
+    "url": "https://www.debian.org",
+    "category": "hard_negative",
+    "reason": "Major Linux distribution — utilitarian design that looks old compared to Ubuntu"
+  },
+  {
+    "url": "https://www.cursors-4u.com",
+    "category": "hard_negative",
+    "reason": "Custom cursor gallery — flashy, ad-heavy, looks suspicious but is a long-running legitimate site"
+  },
+  {
+    "url": "https://bfriendslinens.com",
+    "category": "hard_negative",
+    "reason": "Small linen business — basic template site, minimal info, looks like a front but is real"
+  },
+  {
+    "url": "https://nsole-region.s3.sa-east-1.amazonaws.com/nav-8f46d98.html",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #1 from OpenPhish feed (fetched 2026-02-14T08:49:58.272Z)"
+  },
+  {
+    "url": "https://trans-shemale-forum.verifytoken.com/s/63BZGFSVBWSFCDX7Y9/584dd8/90eab167-7429-489f-99f6-ce86e8d0d81a/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #2 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://riesgerlegal.cc/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #3 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "http://pub-db4d563e83a84e1ca7043c92ba3a1be2.r2.dev/bindex1.html",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #4 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://qrco.de/bgcP06",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #5 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://instagram-analytics.blogspot.com/?m=1",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #6 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://roblox.com.ge/users/8919689996/profile",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #7 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://q-r.to/bgc7TH",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #8 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "http://www.amazon-clone-inceptioncodes.vercel.app/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #9 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://16d1d006saf3-cvdl3955.pages.dev/help/contact/843568835153429",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #10 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://waresoftmicro.myone.page/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #11 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://client.schwabsafety.com/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #12 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "http://pub-873fc6a3edb941c6a17f50911dfca518.r2.dev/dbm.html",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #13 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://www.robiox.com.py/games/88270880256027/WORKING-SUSSY-SWAP-SIMULATOR-2?privateServerLinkCode=005277144126727567749812678521",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #14 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://qrco.de/bgcUIB",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #15 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://l.ead.me/bgc9OZ",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #16 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://modulotopazempresa.com/SegCom.php?hash=1750577278698f72ebc4ad66.51854335",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #17 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://clientesvipsfeirao.github.io/feirao/",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #18 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "http://sudhan-blip.github.io/netflix-replica",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #19 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  },
+  {
+    "url": "https://q-r.to/bgcJpI",
+    "category": "real_phishing",
+    "reason": "Live phishing URL #20 from OpenPhish feed (fetched 2026-02-14T08:49:58.274Z)"
+  }
+]

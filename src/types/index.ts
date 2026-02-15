@@ -65,6 +65,30 @@ export interface CompareRequest {
   productUrl: string;
 }
 
+/** Raw product result from Google Shopping (serpSearch.ts). */
+export interface ProductResult {
+  id: string;
+  title: string;
+  price: number;          // USD number, 0 if unavailable
+  currency: string;
+  retailer: string;       // "Amazon", "Walmart", etc.
+  domain: string;         // "amazon.com"
+  url: string;
+  imageUrl?: string;
+  rating?: number;
+  reviewCount?: number;
+  snippet?: string;       // shipping tag, promo label, etc.
+}
+
+export interface ShoppingRequest {
+  /** Free-text search query or product description (optional). */
+  text?: string;
+  /** Base64-encoded image bytes or full data-URI (optional). */
+  imageBase64?: string;
+  /** MIME type of the image, e.g. "image/jpeg" (optional). */
+  imageMediaType?: string;
+}
+
 // Server-Sent Event types (streamed to frontend)
 export type SSEEvent =
   | { event: "card"; data: EvidenceCard }
@@ -76,25 +100,14 @@ export type SSEEvent =
 
 // ── Shopping Agent Types ─────────────────────────────────────────────────
 
-export interface ProductResult {
-  id: string;
-  title: string;
-  price: number;
-  currency: string;
-  retailer: string;
-  domain: string;
-  url: string;
-  imageUrl?: string;
-  rating?: number;
-  reviewCount?: number;
-  snippet?: string;
-}
-
 export type FraudCheckName =
   | "Retailer Reputation"
   | "Safety Database"
   | "Community Sentiment"
-  | "Seller Verification";
+  | "Brand Impersonation"
+  | "Page Red Flags"
+  | "Seller Verification"
+  | "Link Verification";
 
 export type FraudCheckStatus = "passed" | "warning" | "failed" | "pending";
 
@@ -117,7 +130,47 @@ export interface SearchRequest {
   query?: string;
   image?: string; // base64 encoded
   url?: string;   // product URL to find alternatives for
+  searchQueries?: string[]; // post-refinement query variants
 }
+
+// ── Query Refiner Types ───────────────────────────────────────────────────────
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface RefinementOption {
+  /** Short vivid label, e.g. "The Streetwear Look" */
+  label: string;
+  /** One-line description of this lifestyle/use-case path */
+  description: string;
+  /** Keywords to append to the query if the user picks this option */
+  value: string;
+}
+
+export type RefineResult =
+  | {
+      type: "question";
+      question: string;
+      options: RefinementOption[];
+      internalReasoning: string;
+    }
+  | {
+      type: "ready";
+      refinedQuery: string;
+      searchQueries: string[];
+      internalReasoning: string;
+    };
+
+// ── Results UI Phase (animation state machine) ───────────────────────────
+
+export type ResultsPhase =
+  | "hidden"
+  | "two-columns"
+  | "wiping"
+  | "shuffling"
+  | "final-list";
 
 export type SearchSSEEvent =
   | { event: "narration"; data: { text: string } }
@@ -128,12 +181,3 @@ export type SearchSSEEvent =
   | { event: "best_pick"; data: { productId: string; savings?: number } }
   | { event: "done"; data: { summary: string; totalProducts: number; trustedCount: number; flaggedCount: number } }
   | { event: "error"; data: { message: string } };
-
-// ── Results UI Phase ─────────────────────────────────────────────────────
-
-export type ResultsPhase =
-  | "hidden"
-  | "two-columns"
-  | "wiping"
-  | "shuffling"
-  | "final-list";

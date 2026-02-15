@@ -1,68 +1,32 @@
 import { v4 as uuidv4 } from "uuid";
 import type { EvidenceCard } from "@/types";
 
-interface PerplexityMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
+// ── Step 1: Perplexity finds product URLs across retailers ──────────────
+// Perplexity is good at finding URLs, bad at knowing exact prices.
+// We use it ONLY to discover retailer links, then scrape each one.
 
-interface PerplexityChoice {
-  message: { content: string };
-}
-
-interface PerplexityResponse {
-  choices: PerplexityChoice[];
-}
-
-interface PriceResult {
+interface RetailerLink {
   retailer: string;
-  price: number;
-  currency: string;
   url: string;
-  inStock: boolean;
 }
 
-export async function priceSearch(productUrl: string): Promise<EvidenceCard[]> {
+export async function findRetailerLinks(
+  productUrl: string,
+  productName?: string,
+): Promise<RetailerLink[]> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
-  if (!apiKey) {
-    return [
-      {
-        id: uuidv4(),
-        type: "price",
-        severity: "info",
-        title: "Price search skipped",
-        detail: "Perplexity API key not configured",
-        source: "Perplexity Sonar",
-        confidence: 0,
-        connections: [],
-        metadata: { skipped: true },
-      },
-    ];
-  }
+  if (!apiKey) return [];
+
+  // Truncate product name to key identifying info (first ~60 chars or first comma)
+  const shortName = productName
+    ? productName.split(",")[0].slice(0, 80).trim()
+    : "";
+
+  const searchQuery = shortName
+    ? `Find where to buy "${shortName}" online. Original listing: ${productUrl}`
+    : `Find direct product page URLs for the same product across different retailers: ${productUrl}`;
 
   try {
-    const messages: PerplexityMessage[] = [
-      {
-        role: "system",
-        content: `You are a price comparison assistant. Given a product URL, find the CURRENT, EXACT price of the same product on major retailers.
-
-CRITICAL: Only return prices you can verify from actual retailer pages right now. Do NOT guess or estimate prices. If you are unsure of a price, do not include it.
-
-Return ONLY a JSON array of objects with these fields:
-- retailer (string): The store name
-- price (number): The CURRENT listed price in USD (not the original/crossed-out price — the actual price the customer pays today)
-- currency (string): "USD"
-- url (string): Direct link to the product page
-- inStock (boolean): Whether it's currently available
-
-Return at most 5 results. If you cannot verify a price, omit that retailer. Return an empty array [] if no verified prices found.`,
-      },
-      {
-        role: "user",
-        content: `Find the current, verified prices for the product at this URL across legitimate retailers (Amazon, Best Buy, Walmart, Target, etc.): ${productUrl}`,
-      },
-    ];
-
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -71,84 +35,111 @@ Return at most 5 results. If you cannot verify a price, omit that retailer. Retu
       },
       body: JSON.stringify({
         model: "sonar-pro",
-        messages,
+        messages: [
+          {
+            role: "system",
+            content: `You are a shopping assistant. Given a product, find links to buy it on major US retailers.
+
+Return a JSON array of objects: [{"retailer": "Store Name", "url": "https://..."}]
+
+Include retailers like: Amazon, Walmart, Best Buy, Target, eBay, Costco, B&H Photo, Apple Store, Newegg.
+Return direct product page URLs (not search pages). Return 3-5 results.
+Do NOT include the retailer from the original URL.`,
+          },
+          {
+            role: "user",
+            content: searchQuery,
+          },
+        ],
       }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(25000),
     });
 
     if (!response.ok) {
-      throw new Error(`Perplexity API returned ${response.status}`);
+      console.error(`findRetailerLinks: Perplexity returned ${response.status}`);
+      return [];
     }
 
-    const data: PerplexityResponse = await response.json();
-    const content = data.choices?.[0]?.message?.content || "[]";
+    const data = await response.json();
+    const content: string = data.choices?.[0]?.message?.content || "[]";
+    console.log("findRetailerLinks raw response:", content.slice(0, 500));
 
-    // Extract JSON array from response (may be wrapped in markdown code block)
     const jsonMatch = content.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      return [
-        {
-          id: uuidv4(),
-          type: "price",
-          severity: "info",
-          title: "No price data found",
-          detail: "Could not find comparable prices for this product",
-          source: "Perplexity Sonar",
-          confidence: 0.4,
-          connections: [],
-          metadata: { rawResponse: content },
-        },
-      ];
+      console.log("findRetailerLinks: no JSON array found in response");
+      return [];
     }
 
-    const prices: PriceResult[] = JSON.parse(jsonMatch[0]);
-
-    if (prices.length === 0) {
-      return [
-        {
-          id: uuidv4(),
-          type: "price",
-          severity: "info",
-          title: "No comparable prices found",
-          detail: "This product could not be found on other retailers",
-          source: "Perplexity Sonar",
-          confidence: 0.5,
-          connections: [],
-          metadata: {},
-        },
-      ];
-    }
-
-    return prices.map((p) => ({
-      id: uuidv4(),
-      type: "price" as const,
-      severity: "info" as const,
-      title: `${p.retailer}: ${p.currency} ${p.price.toFixed(2)}`,
-      detail: `${p.inStock ? "In stock" : "Out of stock"} at ${p.retailer}`,
-      source: "Perplexity Sonar",
-      confidence: 0.7,
-      connections: [],
-      metadata: {
-        retailer: p.retailer,
-        price: p.price,
-        currency: p.currency,
-        url: p.url,
-        inStock: p.inStock,
-      },
-    }));
+    const links: RetailerLink[] = JSON.parse(jsonMatch[0]);
+    const filtered = links.filter((l) => l.url && l.retailer && l.url.startsWith("http"));
+    console.log(`findRetailerLinks: found ${filtered.length} links:`, filtered.map((l) => `${l.retailer}: ${l.url}`));
+    return filtered;
   } catch (error) {
-    return [
-      {
-        id: uuidv4(),
-        type: "price",
-        severity: "info",
-        title: "Price search failed",
-        detail: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        source: "Perplexity Sonar",
-        confidence: 0,
-        connections: [],
-        metadata: { error: true },
+    console.error("findRetailerLinks failed:", error);
+    return [];
+  }
+}
+
+// ── Legacy: full price search (used as fallback) ────────────────────────
+export async function priceSearch(productUrl: string): Promise<EvidenceCard[]> {
+  const apiKey = process.env.PERPLEXITY_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const response = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
-    ];
+      body: JSON.stringify({
+        model: "sonar-pro",
+        messages: [
+          {
+            role: "system",
+            content: `You are a price comparison assistant. Given a product URL, find the CURRENT price of the same product on major retailers.
+
+Return ONLY a JSON array with: retailer, price (number, USD), currency ("USD"), url (direct product link), inStock (boolean).
+Return at most 5 results. Return [] if nothing found.`,
+          },
+          {
+            role: "user",
+            content: `Find prices for the product at this URL across retailers: ${productUrl}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (!response.ok) throw new Error(`Perplexity returned ${response.status}`);
+
+    const data = await response.json();
+    const content: string = data.choices?.[0]?.message?.content || "[]";
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) return [];
+
+    const prices = JSON.parse(jsonMatch[0]);
+    return prices
+      .filter((p: { price: number }) => typeof p.price === "number" && p.price > 0)
+      .map((p: { retailer: string; price: number; currency: string; url: string; inStock: boolean }) => ({
+        id: uuidv4(),
+        type: "price" as const,
+        severity: "info" as const,
+        title: `${p.retailer}: $${p.price.toFixed(2)}`,
+        detail: `${p.inStock ? "In stock" : "Out of stock"} at ${p.retailer}`,
+        source: "Perplexity Sonar",
+        confidence: 0.5, // Low confidence — LLM-guessed prices
+        connections: [],
+        metadata: {
+          retailer: p.retailer,
+          price: p.price,
+          currency: p.currency || "USD",
+          url: p.url,
+          inStock: p.inStock,
+          verified: false,
+        },
+      }));
+  } catch {
+    return [];
   }
 }
