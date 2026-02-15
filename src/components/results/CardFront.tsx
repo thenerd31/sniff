@@ -32,14 +32,11 @@ export function CardFront({
     <div
       className="relative w-full h-full flex flex-col justify-between p-4"
       style={{
-        border: `4px solid ${isTopPick ? "#FFD700" : "#1A1A1A"}`,
+        border: "4px solid #1A1A1A",
         borderRadius: 0,
         background: "#FFF8E8",
-        boxShadow: isTopPick
-          ? undefined
-          : "4px 4px 0 #1A1A1A",
+        boxShadow: "4px 4px 0 #1A1A1A",
         imageRendering: "pixelated",
-        animation: isTopPick ? "pixel-glow-pulse 3s ease-in-out infinite" : undefined,
       }}
     >
       {/* Inner border */}
@@ -78,25 +75,26 @@ export function CardFront({
 
         {/* Product image or placeholder */}
         <div
-          className="w-full mb-2 overflow-hidden flex items-center justify-center"
+          className="w-full mb-2 flex items-center justify-center p-2"
           style={{
-            height: 90,
+            aspectRatio: "4 / 5",
             border: "2px solid #1A1A1A",
-            background: "#F5E6C8",
+            background: "#FDF6E3",
+            imageRendering: "pixelated",
           }}
         >
           {product.imageUrl ? (
             <img
               src={product.imageUrl}
               alt={product.title}
-              className="w-full h-full object-contain"
-              style={{ imageRendering: "auto" }}
+              className="max-w-full max-h-full object-contain"
+              style={{ imageRendering: "crisp-edges" }}
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
           ) : (
-            <ShoppingBag size={24} style={{ color: "#8B6914", opacity: 0.5 }} />
+            <ShoppingBag size={28} style={{ color: "#8B6914", opacity: 0.5 }} />
           )}
         </div>
 

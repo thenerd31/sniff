@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion } from "framer-motion";
 import { CardFront } from "./CardFront";
 import { CardBack } from "./CardBack";
 import type { ProductWithVerdict } from "@/types";
@@ -24,7 +23,6 @@ export function FlipCard({
   className = "",
 }: FlipCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   const handleActionAreaEnter = useCallback(() => {
     setIsFlipped(false);
@@ -32,32 +30,20 @@ export function FlipCard({
 
   return (
     <div
-      className={`relative ${className}`}
-      style={{
-        perspective: 1000,
-        // Pixel-art bob animation on hover (only when not flipped)
-        animation: isHovered && !isFlipped ? "pixel-card-bob 0.6s steps(2) infinite" : undefined,
-      }}
-      onMouseEnter={() => {
-        setIsFlipped(true);
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsFlipped(false);
-        setIsHovered(false);
-      }}
+      className={`perspective-1000 ${className}`}
+      style={{ zIndex: isFlipped ? 20 : 1 }}
+      onMouseEnter={() => setIsFlipped(true)}
+      onMouseLeave={() => setIsFlipped(false)}
     >
-      <motion.div
-        className="relative w-full h-full"
-        style={{ transformStyle: "preserve-3d" }}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ type: "spring", stiffness: 500, damping: 18 }}
+      <div
+        className="relative w-full h-full transform-style-3d"
+        style={{
+          transition: "transform 300ms ease-out",
+          transform: isFlipped ? "rotateY(180deg) scale(1.1)" : "none",
+        }}
       >
         {/* Front face */}
-        <div
-          className="absolute inset-0"
-          style={{ backfaceVisibility: "hidden" }}
-        >
+        <div className="absolute inset-0 backface-hidden">
           <CardFront
             product={product}
             showActions={showActions}
@@ -69,16 +55,10 @@ export function FlipCard({
         </div>
 
         {/* Back face */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backfaceVisibility: "hidden",
-            transform: "rotateY(180deg)",
-          }}
-        >
+        <div className="absolute inset-0 backface-hidden rotate-y-180">
           <CardBack product={product} />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

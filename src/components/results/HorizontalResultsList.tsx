@@ -72,7 +72,7 @@ export function HorizontalResultsList({
 
       {/* Horizontal scrollable list */}
       <motion.div
-        className="results-scroll flex gap-5 overflow-x-auto snap-x snap-mandatory pb-4 px-1"
+        className="results-scroll flex gap-5 overflow-x-auto overflow-y-clip snap-x snap-mandatory px-1 py-2"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -83,6 +83,7 @@ export function HorizontalResultsList({
             variants={cardVariants}
             layoutId={`card-${product.id}`}
             className="snap-start shrink-0"
+            style={{ width: 280, height: 500 }}
           >
             <FlipCard
               product={product}
@@ -90,7 +91,7 @@ export function HorizontalResultsList({
               isTopPick={product.id === topPickId}
               isSaved={savedItems.includes(product.id)}
               onToggleSave={() => toggleSave(product.id)}
-              className="w-[280px] h-[380px]"
+              className="w-[280px] h-[500px]"
             />
           </motion.div>
         ))}

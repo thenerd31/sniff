@@ -22,21 +22,6 @@
   --border: #E5E7EB;
 }
 
-/* ── Pixel card bob on hover ──────────────────────────────── */
-@keyframes pixel-card-bob {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-4px); }
-}
-
-/* ── Pixel glow pulse for best deal ───────────────────────── */
-@keyframes pixel-glow-pulse {
-  0%, 100% {
-    box-shadow: 4px 4px 0 #1A1A1A, 0 0 0 2px #FFD700;
-  }
-  50% {
-    box-shadow: 4px 4px 0 #1A1A1A, 0 0 0 4px #FFD700, 0 0 12px rgba(255, 215, 0, 0.4);
-  }
-}
 
 @keyframes singularity-pulse {
   0%, 100% {
