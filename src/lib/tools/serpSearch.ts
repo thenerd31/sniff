@@ -160,8 +160,60 @@ function parsePrice(priceStr: string): number {
 }
 
 /**
+ * Fast HEAD check — returns true if the URL is reachable (2xx, 3xx, 403, 405).
+ * Times out after 4s. Used to filter out dead/fabricated links before streaming.
+ */
+async function isUrlReachable(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const resp = await fetch(url, {
+      method: "HEAD",
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+    // 403/405 = server exists but blocks HEAD — still reachable
+    return resp.ok || resp.status === 403 || resp.status === 405 || resp.status === 301 || resp.status === 302;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate product URLs in parallel and filter out unreachable ones.
+ * Known high-authority domains skip the check (they're always reachable).
+ */
+export async function filterReachableProducts(
+  products: ProductResult[],
+): Promise<ProductResult[]> {
+  const { isHighAuthorityDomain } = await import("@/lib/known-domains");
+
+  const checks = await Promise.allSettled(
+    products.map(async (product) => {
+      // Trusted domains — skip HEAD check
+      if (isHighAuthorityDomain(product.domain)) return true;
+      return isUrlReachable(product.url);
+    })
+  );
+
+  const reachable = products.filter((_, i) => {
+    const result = checks[i];
+    return result.status === "fulfilled" && result.value;
+  });
+
+  const filtered = products.length - reachable.length;
+  if (filtered > 0) {
+    console.log(`serpSearch: filtered out ${filtered} unreachable product URL(s)`);
+  }
+
+  return reachable;
+}
+
+/**
  * Search Google Shopping via Bright Data SERP API.
  * Runs multiple queries in parallel and deduplicates results.
+ * Filters out unreachable URLs before returning.
  */
 export async function searchProducts(
   queries: string[],
@@ -171,14 +223,20 @@ export async function searchProducts(
   const apiKey = process.env.BRIGHT_DATA_API_KEY;
   const zone = process.env.BRIGHT_DATA_SERP_ZONE;
 
+  let products: ProductResult[] = [];
+
   if (apiKey && zone) {
-    const results = await searchViaBrightData(queries, apiKey, zone, maxResults);
-    if (results.length > 0) return results;
-    console.log("serpSearch: Bright Data returned no results, falling back to Perplexity");
+    products = await searchViaBrightData(queries, apiKey, zone, maxResults);
+    if (products.length === 0) {
+      console.log("serpSearch: Bright Data returned no results, falling back to Perplexity");
+      products = await searchProductsPerplexity(queries, maxResults);
+    }
+  } else {
+    products = await searchProductsPerplexity(queries, maxResults);
   }
 
-  // Fallback to Perplexity
-  return searchProductsPerplexity(queries, maxResults);
+  // Filter out dead/fabricated links before returning
+  return filterReachableProducts(products);
 }
 
 async function searchViaBrightData(

@@ -868,7 +868,7 @@ export default function Home() {
                 imageRendering: "pixelated",
               }}
             >
-              Paste any product link and Sniff finds the best price across every store — so you never overpay again.
+              Search any product and Sniff finds the best price across every store — while catching scams before you get burned.
             </p>
 
             <HeroSearch />
@@ -1196,10 +1196,16 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center gap-6">
-            {["Privacy", "Terms", "GitHub"].map((label) => (
+            {[
+              { label: "Privacy", href: "#" },
+              { label: "Terms", href: "#" },
+              { label: "GitHub", href: "https://github.com/thenerd31/sentinel-treehacks" },
+            ].map(({ label, href }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
                 style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#D4C4A0" }}
                 className="transition-colors hover:text-[#FFD700]"
               >

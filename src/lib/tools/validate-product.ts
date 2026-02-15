@@ -410,15 +410,16 @@ export async function validateProduct(
   // Brand impersonation is deterministic — run first
   const brandCheck = brandImpersonationCheck(product.domain);
 
-  const [price, domain, community, safety, linkCheck] = await Promise.all([
+  // URL reachability is now checked earlier in the pipeline (serpSearch.filterReachableProducts)
+  // so we skip it here to avoid redundant network calls.
+  const [price, domain, community, safety] = await Promise.all([
     Promise.resolve(priceAnomalyCheck(product, referencePrice)),
     semanticDomainCheck(product.domain, product.title),
     communityReputationCheck(product.url),
     safetyDatabaseCheck(product.url),
-    urlReachabilityCheck(product.url),
   ]);
 
-  return [price, brandCheck, domain, community, safety, linkCheck];
+  return [price, brandCheck, domain, community, safety];
 }
 
 // ── Verdict ────────────────────────────────────────────────────────────────────
@@ -447,23 +448,10 @@ const FATAL_FLAGS: Array<{
     score: 5,
   },
   {
-    label: "Dead link — product URL does not exist",
-    test: (cs) =>
-      cs.some((c) => c.name === "Link Verification" && c.status === "failed"),
-    score: 10,
-  },
-  {
     label: "Extreme price anomaly on implausible domain",
     test: (cs) =>
       cs.some((c) => c.name === "Page Red Flags"       && c.status === "failed") &&
       cs.some((c) => c.name === "Retailer Reputation"  && c.status === "failed"),
-    score: 0,
-  },
-  {
-    label: "Suspiciously low price + dead link",
-    test: (cs) =>
-      cs.some((c) => c.name === "Page Red Flags"       && c.status === "failed") &&
-      cs.some((c) => c.name === "Link Verification"    && c.status === "failed"),
     score: 0,
   },
   {
