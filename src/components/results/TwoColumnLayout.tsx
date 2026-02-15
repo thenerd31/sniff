@@ -142,7 +142,7 @@ export function TwoColumnLayout({
                   product={product}
                   isSaved={savedItems.includes(product.id)}
                   onToggleSave={() => toggleSave(product.id)}
-                  className="h-[340px]"
+                  className="h-[420px]"
                 />
               </motion.div>
             ))}
@@ -194,7 +194,7 @@ export function TwoColumnLayout({
                   product={product}
                   isSaved={savedItems.includes(product.id)}
                   onToggleSave={() => toggleSave(product.id)}
-                  className="h-[340px]"
+                  className="h-[420px]"
                 />
               </motion.div>
             ))}
