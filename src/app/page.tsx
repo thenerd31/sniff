@@ -16,6 +16,7 @@ import {
   Shield,
   Star,
 } from "lucide-react";
+import { PixelDogMascot } from "@/components/clarify/PixelDogMascot";
 import "@/styles/results.css";
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
@@ -23,52 +24,6 @@ const PIXEL_FONT = "'Press Start 2P', monospace";
 /* ═══════════════════════════════════════════════════════════════
    PIXEL ART SPRITES
    ═══════════════════════════════════════════════════════════════ */
-
-function PixelDogIdle({ style, className }: { style?: React.CSSProperties; className?: string }) {
-  return (
-    <svg
-      width="115"
-      height="86"
-      viewBox="0 0 32 24"
-      className={className}
-      style={{ imageRendering: "pixelated", ...style }}
-    >
-      {/* Body */}
-      <rect x="8" y="10" width="14" height="8" fill="#D4A574" />
-      <rect x="7" y="11" width="1" height="6" fill="#C49464" />
-      <rect x="22" y="11" width="1" height="5" fill="#C49464" />
-      {/* Head — tilted down for sniffing */}
-      <rect x="20" y="7" width="8" height="7" fill="#D4A574" />
-      <rect x="19" y="8" width="1" height="5" fill="#C49464" />
-      <rect x="28" y="8" width="1" height="4" fill="#C49464" />
-      {/* Ear */}
-      <rect x="21" y="5" width="3" height="3" fill="#8B6914" />
-      <rect x="25" y="5" width="3" height="3" fill="#8B6914" />
-      {/* Eye — squinting */}
-      <rect x="24" y="9" width="2" height="1" fill="#1A1A1A" />
-      {/* Nose */}
-      <rect x="27" y="12" width="2" height="2" fill="#1A1A1A" />
-      {/* Sniff lines */}
-      <rect x="29" y="11" width="1" height="1" fill="#8B691480" />
-      <rect x="30" y="10" width="1" height="1" fill="#8B691440" />
-      {/* Tail — up/wagging */}
-      <rect x="5" y="6" width="3" height="2" fill="#8B6914" />
-      <rect x="4" y="4" width="2" height="3" fill="#8B6914" />
-      <rect x="3" y="3" width="2" height="2" fill="#8B6914" />
-      {/* Front legs */}
-      <rect x="18" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="18" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Back legs */}
-      <rect x="9" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="9" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Belly spot */}
-      <rect x="12" y="14" width="4" height="3" fill="#E8C49C" />
-      {/* Collar */}
-      <rect x="19" y="13" width="4" height="2" fill="#FF0000" />
-      <rect x="20" y="14" width="1" height="1" fill="#FFD700" />
-    </svg>
-  );
-}
 
 function PixelCoin({ delay = 0 }: { delay?: number }) {
   return (
@@ -707,7 +662,7 @@ function HeroSearch() {
       {/* Search bar with sparkles */}
       <div className="relative w-full">
         {/* Sparkles around search */}
-        <div className="absolute -left-10 -top-5">
+        <div className="absolute -bottom-5 -left-8">
           <PixelSparkle delay={0} />
         </div>
         <div className="absolute -right-8 top-0">
@@ -716,7 +671,7 @@ function HeroSearch() {
         <div className="absolute -bottom-4 -right-10">
           <PixelCoin delay={0.3} />
         </div>
-        <div className="absolute -bottom-5 -left-8">
+        <div className="absolute -left-10 -top-5">
           <PixelCoin delay={1.2} />
         </div>
 
@@ -842,9 +797,9 @@ export default function Home() {
             </div>
 
             {/* Dog + Heading */}
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-10">
               <div style={{ animation: "dog-bob 1.2s ease-in-out infinite" }}>
-                <PixelDogIdle />
+                <PixelDogMascot state="asking" className="scale-[1.8]" />
               </div>
               <h1 className="flex flex-col items-start">
                 <span style={{ fontFamily: PIXEL_FONT, fontSize: 24, color: "#FFF8E8", textShadow: "4px 4px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A", lineHeight: 2, imageRendering: "pixelated" }}>
