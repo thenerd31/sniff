@@ -16,7 +16,7 @@ import type {
   ProductResult,
   ProductVerdict,
 } from "@/types";
-import { isHighAuthorityDomain } from "@/lib/known-domains";
+import { isHighAuthorityDomain, isKnownDangerousDomain } from "@/lib/known-domains";
 import { redditSearch } from "./reddit";
 import { safeBrowsingCheck } from "./safe-browsing";
 import { scamadviserCheck } from "./scamadviser";
@@ -395,6 +395,17 @@ export async function validateProduct(
   product: ProductResult,
   referencePrice: number
 ): Promise<FraudCheck[]> {
+  // Known dangerous domains get instant danger — skip all checks
+  if (isKnownDangerousDomain(product.domain)) {
+    return [
+      { name: "Page Red Flags", status: "failed", detail: `${product.domain} is a known fraudulent storefront`, severity: 1.0 },
+      { name: "Brand Impersonation", status: "failed", detail: "Selling branded products through unverified storefront", severity: 0.9 },
+      { name: "Retailer Reputation", status: "failed", detail: `${product.domain} — flagged as deceptive`, severity: 1.0 },
+      { name: "Community Sentiment", status: "failed", detail: "Multiple scam reports found", severity: 0.9 },
+      { name: "Safety Database", status: "failed", detail: "Flagged as deceptive commerce site", severity: 1.0 },
+    ];
+  }
+
   // High-authority domains get an instant pass — skip all expensive checks
   if (isHighAuthorityDomain(product.domain)) {
     return [

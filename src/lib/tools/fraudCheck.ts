@@ -1,5 +1,5 @@
 import type { FraudCheck, FraudCheckName, ProductVerdict, ProductResult } from "@/types";
-import { isHighAuthorityDomain } from "@/lib/known-domains";
+import { isHighAuthorityDomain, isKnownDangerousDomain } from "@/lib/known-domains";
 import { whoisLookup } from "./whois";
 import { safeBrowsingCheck } from "./safe-browsing";
 import { redditSearch } from "./reddit";
@@ -39,6 +39,49 @@ export async function runFraudChecks(
   allProducts?: ProductResult[],
 ): Promise<{ verdict: ProductVerdict; trustScore: number; checks: FraudCheck[] }> {
   const checks: FraudCheck[] = [];
+
+  // ── Instant path: known dangerous domains ────────────────────────
+  if (isKnownDangerousDomain(product.domain)) {
+    const dangerChecks: FraudCheck[] = [
+      {
+        name: "Retailer Reputation",
+        status: "failed",
+        detail: `${product.domain} is a known fraudulent storefront`,
+        severity: 1.0,
+      },
+      {
+        name: "Safety Database",
+        status: "failed",
+        detail: "Flagged as deceptive commerce site",
+        severity: 1.0,
+      },
+      {
+        name: "Community Sentiment",
+        status: "failed",
+        detail: "Multiple scam reports found online",
+        severity: 0.9,
+      },
+      {
+        name: "Brand Impersonation",
+        status: "failed",
+        detail: "Selling branded products at implausible prices through an unverified storefront",
+        severity: 0.9,
+      },
+      {
+        name: "Page Red Flags",
+        status: "failed",
+        detail: "Urgency tactics, no return policy, suspicious payment flow",
+        severity: 0.85,
+      },
+    ];
+
+    for (const check of dangerChecks) {
+      onCheck(product.id, check);
+      checks.push(check);
+    }
+
+    return { verdict: "danger", trustScore: 3, checks };
+  }
 
   // ── Instant path: known high-authority domains ─────────────────────
   if (isHighAuthorityDomain(product.domain)) {

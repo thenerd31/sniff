@@ -93,6 +93,29 @@ const HIGH_AUTHORITY_DOMAINS = new Set([
   "kaspersky.com", "avast.com",
 ]);
 
+// ── Known dangerous / scam domains ────────────────────────────────────────
+// These get instant "danger" verdict — no API calls needed.
+const KNOWN_DANGEROUS_DOMAINS = new Set([
+  "ivanna.kmikd.com",
+  "kmikd.com",
+  "bestdealsonline.shop",
+  "cheapelectronics.xyz",
+  "super-discount-store.com",
+  "brand-outlet-sale.com",
+]);
+
+export function isKnownDangerousDomain(hostname: string): boolean {
+  const domain = hostname.replace(/^www\./, "").toLowerCase();
+  if (KNOWN_DANGEROUS_DOMAINS.has(domain)) return true;
+
+  // Check if any dangerous domain is a suffix (subdomain match)
+  for (const d of KNOWN_DANGEROUS_DOMAINS) {
+    if (domain.endsWith(`.${d}`) || domain === d) return true;
+  }
+
+  return false;
+}
+
 export function isHighAuthorityDomain(hostname: string): boolean {
   const domain = hostname.replace(/^www\./, "").toLowerCase();
   if (HIGH_AUTHORITY_DOMAINS.has(domain)) return true;
