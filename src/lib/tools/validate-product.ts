@@ -86,43 +86,58 @@ export function priceAnomalyCheck(
 // Catches domains like "ebayitsworthmore.com" or "amazonsale-deals.com" that
 // embed a major brand/retailer name but aren't the official domain.
 
-const BRAND_DOMAINS: Record<string, string> = {
-  ebay: "ebay.com",
-  amazon: "amazon.com",
-  walmart: "walmart.com",
-  apple: "apple.com",
-  bestbuy: "bestbuy.com",
-  target: "target.com",
-  costco: "costco.com",
-  nike: "nike.com",
-  adidas: "adidas.com",
-  samsung: "samsung.com",
-  sony: "sony.com",
-  bose: "bose.com",
-  dell: "dell.com",
-  newegg: "newegg.com",
-  nordstrom: "nordstrom.com",
-  macys: "macys.com",
-  sephora: "sephora.com",
-  wayfair: "wayfair.com",
-  homedepot: "homedepot.com",
-  lowes: "lowes.com",
-  patagonia: "patagonia.com",
+// Maps brand keywords → all legitimate domains that may contain that keyword.
+// e.g. "nordstrom" appears in both nordstrom.com AND nordstromrack.com.
+const BRAND_DOMAINS: Record<string, string[]> = {
+  ebay: ["ebay.com"],
+  amazon: ["amazon.com", "amazonwireless.com"],
+  walmart: ["walmart.com"],
+  apple: ["apple.com"],
+  bestbuy: ["bestbuy.com"],
+  target: ["target.com"],
+  costco: ["costco.com"],
+  nike: ["nike.com"],
+  adidas: ["adidas.com"],
+  samsung: ["samsung.com"],
+  sony: ["sony.com"],
+  bose: ["bose.com"],
+  dell: ["dell.com"],
+  newegg: ["newegg.com"],
+  nordstrom: ["nordstrom.com", "nordstromrack.com"],
+  macys: ["macys.com"],
+  sephora: ["sephora.com"],
+  wayfair: ["wayfair.com"],
+  homedepot: ["homedepot.com"],
+  lowes: ["lowes.com"],
+  patagonia: ["patagonia.com"],
 };
 
 export function brandImpersonationCheck(domain: string): FraudCheck {
   const cleanDomain = domain.replace(/^www\./, "").toLowerCase();
 
-  for (const [brand, officialDomain] of Object.entries(BRAND_DOMAINS)) {
+  // High-authority domains never trigger brand impersonation
+  if (isHighAuthorityDomain(cleanDomain)) {
+    return {
+      name: "Brand Impersonation",
+      status: "passed",
+      detail: "No brand impersonation detected",
+      severity: 0,
+    };
+  }
+
+  for (const [brand, officialDomains] of Object.entries(BRAND_DOMAINS)) {
     // Does the domain contain this brand name?
     if (!cleanDomain.includes(brand)) continue;
-    // Is it the official domain (or a subdomain of it)?
-    if (cleanDomain === officialDomain || cleanDomain.endsWith(`.${officialDomain}`)) continue;
+    // Is it any of the official domains (or a subdomain of one)?
+    const isOfficial = officialDomains.some(
+      (d) => cleanDomain === d || cleanDomain.endsWith(`.${d}`)
+    );
+    if (isOfficial) continue;
 
     return {
       name: "Brand Impersonation",
       status: "failed",
-      detail: `"${cleanDomain}" contains "${brand}" but is NOT the official ${officialDomain} — possible brand impersonation`,
+      detail: `"${cleanDomain}" contains "${brand}" but is NOT an official ${brand} domain — possible brand impersonation`,
       severity: 0.9,
     };
   }
@@ -315,9 +330,9 @@ export async function communityReputationCheck(url: string): Promise<FraudCheck>
       // "info" — covers "no posts found" and "only incidental mentions"
       const noPresence = (card.metadata.postCount ?? 0) === 0;
       status = noPresence ? "warning" : "passed";
-      severity = noPresence ? 0.35 : 0;
+      severity = noPresence ? 0.15 : 0; // Low: many legit retailers have no Reddit presence
       detail = noPresence
-        ? `No Reddit mentions of "${domain}" — zero online reputation for a claimed retailer`
+        ? `No Reddit mentions of "${domain}" — limited online presence`
         : card.detail || card.title;
     }
   }
@@ -380,6 +395,18 @@ export async function validateProduct(
   product: ProductResult,
   referencePrice: number
 ): Promise<FraudCheck[]> {
+  // High-authority domains get an instant pass — skip all expensive checks
+  if (isHighAuthorityDomain(product.domain)) {
+    return [
+      { name: "Page Red Flags", status: "passed", detail: `${product.retailer} is a verified major retailer`, severity: 0 },
+      { name: "Brand Impersonation", status: "passed", detail: "Official domain", severity: 0 },
+      { name: "Retailer Reputation", status: "passed", detail: `${product.domain} — trusted retailer`, severity: 0 },
+      { name: "Community Sentiment", status: "passed", detail: "Established retailer", severity: 0 },
+      { name: "Safety Database", status: "passed", detail: "Trusted domain", severity: 0 },
+      { name: "Link Verification", status: "passed", detail: "Trusted domain", severity: 0 },
+    ];
+  }
+
   // Brand impersonation is deterministic — run first
   const brandCheck = brandImpersonationCheck(product.domain);
 

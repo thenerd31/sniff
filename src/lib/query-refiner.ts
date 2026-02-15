@@ -72,6 +72,23 @@ const SYSTEM_PROMPT = `You are a personal shopping stylist having a conversation
   ]
 }`;
 
+// ── Clothing detection ────────────────────────────────────────────────────────
+// If the query is about clothing/apparel and the user hasn't specified gender yet,
+// always ask men's/women's as the very first question.
+
+const CLOTHING_KEYWORDS = /\b(jacket|jackets|coat|coats|pants|jeans|shirt|shirts|blouse|dress|dresses|skirt|suit|suits|blazer|sweater|hoodie|shorts|leggings|joggers|sneakers|shoes|boots|sandals|heels|clothing|clothes|apparel|outfit|outfits|wear|top|tops|tee|tees|polo|cardigan|vest|parka|anorak|tracksuit|romper|jumpsuit|overalls|chinos|khakis|trousers|loafers|oxfords|socks|underwear|bra|lingerie|activewear|athleisure|sportswear|swimsuit|bikini|trunks|flannel|denim|hoodie|sweatshirt|sweatpants|windbreaker|raincoat|peacoat|trenchcoat|jersey)\b/i;
+
+const GENDER_ALREADY_SPECIFIED = /\b(men'?s|women'?s|mens|womens|man'?s|woman'?s|male|female|boy'?s|girl'?s|unisex|kid'?s|kids)\b/i;
+
+function isClothingQuery(query: string): boolean {
+  return CLOTHING_KEYWORDS.test(query);
+}
+
+function hasGenderInHistory(query: string, history: ConversationMessage[]): boolean {
+  if (GENDER_ALREADY_SPECIFIED.test(query)) return true;
+  return history.some((m) => GENDER_ALREADY_SPECIFIED.test(m.content));
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
@@ -86,6 +103,25 @@ export async function refineQuery(
   history: ConversationMessage[],
   forceSearch = false
 ): Promise<RefineResult> {
+  // ── Must-have: gender for clothing queries ─────────────────────────────
+  if (
+    !forceSearch &&
+    history.length === 0 &&
+    isClothingQuery(initialQuery) &&
+    !hasGenderInHistory(initialQuery, history)
+  ) {
+    return {
+      type: "question",
+      question: "Who are you shopping for?",
+      options: [
+        { label: "Men's", description: "Men's clothing & footwear", value: "men's" },
+        { label: "Women's", description: "Women's clothing & footwear", value: "women's" },
+        { label: "Unisex", description: "Gender-neutral styles", value: "unisex" },
+        { label: "Kids", description: "Children's clothing & footwear", value: "kids" },
+      ],
+      internalReasoning: "Clothing query detected — gender is the highest-info-gain first question",
+    };
+  }
   const forceNote = forceSearch
     ? "\n\nThe user wants to search now — treat the query as specific enough."
     : "";
