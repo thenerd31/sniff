@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ClarifyingQuestions } from "@/components/clarify/ClarifyingQuestions";
 import type { Refinement, ClarifyAnswer } from "@/types/clarify";
@@ -44,6 +44,14 @@ function refineResponseToRefinement(data: {
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function ClarifyTestPage() {
+  return (
+    <Suspense>
+      <ClarifyTestPageInner />
+    </Suspense>
+  );
+}
+
+function ClarifyTestPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryParam = searchParams.get("q") || "jacket";

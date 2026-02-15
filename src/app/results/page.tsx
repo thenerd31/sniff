@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useResultsStore, useProductsWithVerdicts } from "@/stores/resultsStore";
 import { ResultsContainer } from "@/components/results/ResultsContainer";
@@ -9,6 +9,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 export default function ResultsPage() {
+  return (
+    <Suspense>
+      <ResultsPageInner />
+    </Suspense>
+  );
+}
+
+function ResultsPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const [narration, setNarration] = useState("Starting search...");

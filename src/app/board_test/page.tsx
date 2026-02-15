@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { Suspense, useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -973,6 +973,14 @@ function DiggingPlaceholder() {
    ═══════════════════════════════════════════════════════════════ */
 
 export default function BoardPage() {
+  return (
+    <Suspense>
+      <BoardPageInner />
+    </Suspense>
+  );
+}
+
+function BoardPageInner() {
   const searchParams = useSearchParams();
   const query = searchParams.get("query") || "";
   const targetUrl = searchParams.get("url") || "";
