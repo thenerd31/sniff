@@ -13,6 +13,74 @@ interface ThinkingSummaryProps {
 const PIXEL_FONT = "'Press Start 2P', monospace";
 
 /**
+ * Build a natural-sounding summary from label+value pairs.
+ * Maps dimension labels to sentence fragments so the output reads like:
+ *   "Looking for men's puffer jackets, around $100-200, in black."
+ * instead of "I'm looking for a men's, puffer, $100-200, black jacket."
+ */
+function buildSummary(productName: string, answers: ClarifyAnswer[]): string {
+  if (answers.length === 0) return `Looking for ${productName}.`;
+
+  // Filter out empty/skip answers
+  const meaningful = answers.filter((a) => a.value && a.value.trim() !== "");
+  if (meaningful.length === 0) return `Looking for ${productName}.`;
+
+  // Group answers by their dimension label
+  const byLabel = new Map<string, string>();
+  for (const a of meaningful) {
+    byLabel.set(a.label.toLowerCase(), a.value);
+  }
+
+  // Build sentence parts in natural order
+  const parts: string[] = [];
+
+  // Gender/audience first (e.g. "men's", "women's")
+  const gender = byLabel.get("gender") || byLabel.get("audience") || byLabel.get("who");
+  if (gender) parts.push(gender);
+
+  // Style/type (e.g. "puffer", "running")
+  const style = byLabel.get("style") || byLabel.get("type") || byLabel.get("category");
+  if (style) parts.push(style);
+
+  // Product name
+  parts.push(productName);
+
+  // Build the base: "men's puffer jacket"
+  let sentence = `Looking for ${parts.join(" ")}`;
+
+  // Append other dimensions as trailing clauses
+  const usedLabels = new Set(["gender", "audience", "who", "style", "type", "category"]);
+  const extras: string[] = [];
+  for (const a of meaningful) {
+    if (usedLabels.has(a.label.toLowerCase())) continue;
+    const label = a.label.toLowerCase();
+    if (label.includes("budget") || label.includes("price")) {
+      extras.push(`around ${a.value}`);
+    } else if (label.includes("brand")) {
+      extras.push(`from ${a.value}`);
+    } else if (label.includes("color") || label.includes("colour")) {
+      extras.push(`in ${a.value}`);
+    } else if (label.includes("material")) {
+      extras.push(`made of ${a.value}`);
+    } else if (label.includes("use") || label.includes("occasion")) {
+      extras.push(`for ${a.value}`);
+    } else if (label.includes("feature")) {
+      extras.push(`with ${a.value}`);
+    } else if (label.includes("size") || label.includes("fit")) {
+      extras.push(`${a.value} fit`);
+    } else {
+      extras.push(a.value);
+    }
+  }
+
+  if (extras.length > 0) {
+    sentence += ", " + extras.join(", ");
+  }
+
+  return sentence + ".";
+}
+
+/**
  * ThinkingSummary — Shows after each answer. The agent displays its current
  * understanding of the product and the user decides:
  *   "Good to go!" → proceed to research
@@ -27,9 +95,8 @@ export function ThinkingSummary({
   const [typedText, setTypedText] = useState("");
   const [typingDone, setTypingDone] = useState(false);
 
-  // Build the "thinking" summary string
-  const summaryParts = answers.map((a) => a.value);
-  const summaryText = `I'm looking for a ${summaryParts.join(", ")} ${productName}.`;
+  // Build an intelligent summary sentence from structured answers
+  const summaryText = buildSummary(productName, answers);
 
   // Typing animation for the summary
   useEffect(() => {

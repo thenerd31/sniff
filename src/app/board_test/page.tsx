@@ -675,33 +675,57 @@ function EvidenceCardContent({ card }: { card: EvidenceCard & { isNew: boolean }
         />
       )}
 
-      {/* Header */}
-      <div className="mb-2 flex items-center gap-2">
-        <TypeIcon className="h-4 w-4" style={{ color: colors.text }} />
-        <span className="flex-1 truncate" style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
-          {card.source}
-        </span>
-        <span
-          style={{
-            fontFamily: PIXEL_FONT,
-            fontSize: 6,
-            color: colors.text,
-            border: `2px solid ${colors.border}`,
-            background: colors.bg,
-            padding: "2px 6px",
-          }}
-        >
-          {colors.label}
-        </span>
-      </div>
+      {/* Product image + header row */}
+      <div className="mb-2 flex gap-2">
+        {card.metadata?.imageUrl && (
+          <div
+            className="shrink-0 overflow-hidden"
+            style={{
+              width: 52,
+              height: 52,
+              border: "2px solid #D4C4A0",
+              imageRendering: "auto",
+              background: "#FFFFFF",
+            }}
+          >
+            <img
+              src={card.metadata.imageUrl}
+              alt=""
+              className="h-full w-full object-contain"
+              style={{ imageRendering: "auto" }}
+            />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="mb-1 flex items-center gap-2">
+            <TypeIcon className="h-3 w-3" style={{ color: colors.text }} />
+            <span className="flex-1 truncate" style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
+              {card.source}
+            </span>
+            <span
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: 5,
+                color: colors.text,
+                border: `2px solid ${colors.border}`,
+                background: colors.bg,
+                padding: "1px 4px",
+              }}
+            >
+              {colors.label}
+            </span>
+          </div>
 
-      {/* Title */}
-      <h3
-        className="mb-1"
-        style={{ fontFamily: PIXEL_FONT, fontSize: 8, lineHeight: 1.6, color: "#1A1A1A" }}
-      >
-        {card.title}
-      </h3>
+          {/* Title */}
+          <h3
+            className="mb-0.5"
+            style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 1.5, color: "#1A1A1A" }}
+          >
+            {card.title}
+          </h3>
+        </div>
+      </div>
 
       {/* Detail */}
       <p
@@ -1184,7 +1208,7 @@ export default function BoardPage() {
             source: product.domain,
             confidence: 0.5,
             connections: [],
-            metadata: {},
+            metadata: { imageUrl: product.imageUrl },
           };
 
           const newCloud: CloudData = {
