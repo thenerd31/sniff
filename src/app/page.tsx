@@ -27,8 +27,8 @@ const PIXEL_FONT = "'Press Start 2P', monospace";
 function PixelDogIdle({ style, className }: { style?: React.CSSProperties; className?: string }) {
   return (
     <svg
-      width="96"
-      height="72"
+      width="115"
+      height="86"
       viewBox="0 0 32 24"
       className={className}
       style={{ imageRendering: "pixelated", ...style }}
@@ -693,49 +693,50 @@ function HeroSearch() {
   }
 
   return (
-    <div className="flex w-full max-w-[620px] flex-col items-center gap-4">
+    <div className="flex w-full max-w-[744px] flex-col items-center gap-5">
       {/* Search bar with sparkles */}
       <div className="relative w-full">
         {/* Sparkles around search */}
-        <div className="absolute -left-8 -top-4">
+        <div className="absolute -left-10 -top-5">
           <PixelSparkle delay={0} />
         </div>
-        <div className="absolute -right-6 top-0">
+        <div className="absolute -right-8 top-0">
           <PixelSparkle delay={0.7} />
         </div>
-        <div className="absolute -bottom-3 -right-8">
+        <div className="absolute -bottom-4 -right-10">
           <PixelCoin delay={0.3} />
         </div>
-        <div className="absolute -bottom-4 -left-6">
+        <div className="absolute -bottom-5 -left-8">
           <PixelCoin delay={1.2} />
         </div>
 
         <div
           className="flex w-full items-center gap-0"
           style={{
-            border: "4px solid #1A1A1A",
+            border: "5px solid #1A1A1A",
             background: "#FFF8E8",
-            boxShadow: "4px 4px 0 #1A1A1A",
+            boxShadow: "5px 5px 0 #1A1A1A",
+            imageRendering: "pixelated",
           }}
         >
-          <Search className="ml-3 h-4 w-4 shrink-0" style={{ color: "#8B6914" }} />
+          <Search className="ml-4 h-5 w-5 shrink-0" style={{ color: "#8B6914" }} />
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleInvestigate()}
             placeholder="Describe the treasure you're looking for..."
-            className="h-12 flex-1 bg-transparent px-3 text-[#4A3A2A] placeholder:text-[#8B6914]/50 focus:outline-none"
-            style={{ fontFamily: PIXEL_FONT, fontSize: 7 }}
+            className="h-14 flex-1 bg-transparent px-4 text-[#4A3A2A] placeholder:text-[#8B6914]/50 focus:outline-none"
+            style={{ fontFamily: PIXEL_FONT, fontSize: 10, imageRendering: "pixelated" }}
           />
           <button
             onClick={handleInvestigate}
-            className="m-1.5 flex h-9 items-center gap-2 px-5"
+            className="m-2 flex h-11 items-center gap-2.5 px-6"
             style={{
-              border: "3px solid #1A1A1A",
+              border: "4px solid #1A1A1A",
               background: "#FF6B00",
               fontFamily: PIXEL_FONT,
-              fontSize: 7,
+              fontSize: 8,
               color: "#FFF8E8",
               animation: "legendary-glow 2s ease-in-out infinite",
               cursor: "pointer",
@@ -748,12 +749,12 @@ function HeroSearch() {
             onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
           >
             FIND DEALS
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <p style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#4A3A2A", opacity: 0.7, letterSpacing: 1 }}>
+      <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#4A3A2A", opacity: 0.7, letterSpacing: 1, imageRendering: "pixelated" }}>
         Works with Amazon, Walmart, eBay, AliExpress &amp; more
       </p>
     </div>
@@ -811,34 +812,35 @@ export default function Home() {
       <section id="search" className="relative overflow-hidden">
         <HeroBackground />
 
-        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 pt-20 text-center">
-          <div className="mx-auto flex w-full max-w-[800px] flex-col items-center gap-6">
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6 pt-24 text-center">
+          <div className="mx-auto flex w-full max-w-[960px] flex-col items-center gap-8">
             {/* Announcement badge — pixel style with float */}
             <div
-              className="flex items-center gap-2 px-4 py-2"
+              className="flex items-center gap-2.5 px-5 py-2.5"
               style={{
-                border: "3px solid #1A1A1A",
+                border: "4px solid #1A1A1A",
                 background: "#FFD700",
-                boxShadow: "3px 3px 0 #1A1A1A",
+                boxShadow: "4px 4px 0 #1A1A1A",
                 animation: "float-gentle 3s ease-in-out infinite",
+                imageRendering: "pixelated",
               }}
             >
-              <Sparkles className="h-3 w-3" style={{ color: "#8B6914" }} />
-              <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#1A1A1A", letterSpacing: 1 }}>
+              <Sparkles className="h-3.5 w-3.5" style={{ color: "#8B6914" }} />
+              <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A", letterSpacing: 1 }}>
                 NEW — AI-POWERED PRICE DISCOVERY
               </span>
             </div>
 
             {/* Dog + Heading */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-5">
               <div style={{ animation: "dog-bob 1.2s ease-in-out infinite" }}>
                 <PixelDogIdle />
               </div>
               <h1 className="flex flex-col items-start">
-                <span style={{ fontFamily: PIXEL_FONT, fontSize: 20, color: "#FFF8E8", textShadow: "3px 3px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A", lineHeight: 2 }}>
+                <span style={{ fontFamily: PIXEL_FONT, fontSize: 24, color: "#FFF8E8", textShadow: "4px 4px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A", lineHeight: 2, imageRendering: "pixelated" }}>
                   YOUR PERSONAL
                 </span>
-                <span style={{ fontFamily: PIXEL_FONT, fontSize: 20, color: "#FF6B00", textShadow: "3px 3px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A", lineHeight: 2 }}>
+                <span style={{ fontFamily: PIXEL_FONT, fontSize: 24, color: "#FF6B00", textShadow: "4px 4px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A", lineHeight: 2, imageRendering: "pixelated" }}>
                   SHOPPING QUEST
                 </span>
               </h1>
@@ -846,13 +848,14 @@ export default function Home() {
 
             {/* Subtitle */}
             <p
-              className="max-w-[560px]"
+              className="max-w-[672px]"
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 8,
+                fontSize: 10,
                 lineHeight: 2.2,
                 color: "#FFF8E8",
                 textShadow: "2px 2px 0 #1A1A1A, -1px -1px 0 #1A1A1A, 1px -1px 0 #1A1A1A, -1px 1px 0 #1A1A1A, 1px 1px 0 #1A1A1A",
+                imageRendering: "pixelated",
               }}
             >
               Paste any product link and Sniff finds the best price across every store — so you never overpay again.
