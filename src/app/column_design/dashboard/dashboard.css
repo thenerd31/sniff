@@ -29,6 +29,7 @@
   image-rendering: pixelated;
   border: 3px solid #1a1a1a;
   background: #fff8e8;
+  color: #1a1a1a;
   box-shadow: 0 4px 0 #1a1a1a;
   transform: translateY(0);
   transition: transform 0.05s, box-shadow 0.05s, background 0.1s,
@@ -167,16 +168,12 @@
 
 @keyframes dashboard-report-expand {
   0% {
-    max-height: 0;
     opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
+    transform: translateY(-10px);
   }
   100% {
-    max-height: 800px;
     opacity: 1;
-    padding-top: 24px;
-    padding-bottom: 24px;
+    transform: translateY(0);
   }
 }
 
