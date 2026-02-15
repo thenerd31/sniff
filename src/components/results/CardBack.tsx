@@ -1,45 +1,81 @@
 "use client";
 
-import { CheckCircle, AlertTriangle, XCircle, Clock, ShieldCheck } from "lucide-react";
 import type { FraudCheck, FraudCheckStatus, ProductWithVerdict } from "@/types";
+
+const PIXEL_FONT = "'Press Start 2P', monospace";
 
 interface CardBackProps {
   product: ProductWithVerdict;
 }
 
-const statusIcons: Record<FraudCheckStatus, React.ReactNode> = {
-  passed: <CheckCircle size={16} className="text-emerald-500" />,
-  warning: <AlertTriangle size={16} className="text-amber-500" />,
-  failed: <XCircle size={16} className="text-red-400" />,
-  pending: <Clock size={16} className="text-gray-400" />,
-};
+function getStatusPixel(status: FraudCheckStatus): { color: string; char: string } {
+  switch (status) {
+    case "passed":
+      return { color: "#00CC00", char: "✓" };
+    case "warning":
+      return { color: "#FFD700", char: "!" };
+    case "failed":
+      return { color: "#FF0000", char: "✗" };
+    case "pending":
+      return { color: "#8B6914", char: "?" };
+  }
+}
 
-function getSeverityColor(severity: number): string {
-  if (severity < 0.3) return "bg-emerald-500";
-  if (severity <= 0.6) return "bg-amber-500";
-  return "bg-red-400";
+function getSeverityBarColor(severity: number): string {
+  if (severity < 0.3) return "#00CC00";
+  if (severity <= 0.6) return "#FFD700";
+  return "#FF0000";
+}
+
+function PixelSeverityBar({ severity }: { severity: number }) {
+  const segments = 8;
+  const filled = Math.round(severity * segments);
+  const color = getSeverityBarColor(severity);
+
+  return (
+    <div
+      className="flex gap-[1px]"
+      style={{ height: 6, border: "2px solid #1A1A1A", padding: 1, background: "#2A2A2A" }}
+    >
+      {Array.from({ length: segments }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            background: i < filled ? color : "#444",
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 function FraudCheckRow({ check }: { check: FraudCheck }) {
+  const statusInfo = getStatusPixel(check.status);
+
   return (
-    <div className="flex items-start gap-2.5 py-2 border-b border-[var(--surface-2)] last:border-0">
-      <div className="mt-0.5 shrink-0">{statusIcons[check.status]}</div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-xs font-semibold text-[var(--foreground)]">
-            {check.name}
-          </span>
-        </div>
-        <p className="text-[10px] text-[var(--text-muted)] leading-tight mb-1.5">
-          {check.detail}
-        </p>
-        {/* Severity bar */}
-        <div className="w-full h-1 rounded-full bg-[var(--surface-2)]">
-          <div
-            className={`h-full rounded-full transition-all ${getSeverityColor(check.severity)}`}
-            style={{ width: `${check.severity * 100}%` }}
-          />
-        </div>
+    <div className="py-1.5" style={{ borderBottom: "2px solid #1A1A1A20" }}>
+      <div className="flex items-center gap-2 mb-0.5">
+        <span
+          style={{
+            fontFamily: PIXEL_FONT,
+            fontSize: 8,
+            color: statusInfo.color,
+            width: 12,
+            textAlign: "center",
+          }}
+        >
+          {statusInfo.char}
+        </span>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#1A1A1A", flex: 1 }}>
+          {check.name}
+        </span>
+      </div>
+      <p className="mb-1 ml-[20px]" style={{ fontFamily: PIXEL_FONT, fontSize: 5, lineHeight: 1.8, color: "#4A3A2A" }}>
+        {check.detail}
+      </p>
+      <div className="ml-[20px]">
+        <PixelSeverityBar severity={check.severity} />
       </div>
     </div>
   );
@@ -47,45 +83,77 @@ function FraudCheckRow({ check }: { check: FraudCheck }) {
 
 export function CardBack({ product }: CardBackProps) {
   const verdictColor =
-    product.verdict === "trusted"
-      ? "text-emerald-600"
-      : product.verdict === "caution"
-      ? "text-amber-600"
-      : "text-red-500";
+    product.verdict === "trusted" ? "#006400"
+    : product.verdict === "caution" ? "#8B6914"
+    : "#8B0000";
 
   return (
     <div
-      className="
-        w-full h-full rounded-3xl p-5 flex flex-col
-        bg-white border border-[var(--border)]
-        shadow-[0_2px_20px_rgba(0,0,0,0.05)]
-      "
+      className="w-full h-full flex flex-col p-4"
+      style={{
+        border: "4px solid #1A1A1A",
+        borderRadius: 0,
+        background: "#FFF8E8",
+        boxShadow: "4px 4px 0 #1A1A1A",
+        imageRendering: "pixelated",
+      }}
     >
+      {/* Inner border */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 3,
+          border: "2px solid #1A1A1A20",
+          pointerEvents: "none",
+        }}
+      />
+
       {/* Header */}
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--surface-2)]">
-        <ShieldCheck size={18} className={verdictColor} />
-        <h4 className="text-sm font-bold text-[var(--foreground)]">Fraud Analysis</h4>
-        <span className={`ml-auto text-lg font-bold ${verdictColor}`}>
+      <div
+        className="flex items-center gap-2 mb-2 pb-2"
+        style={{ borderBottom: "3px solid #1A1A1A", position: "relative", zIndex: 1 }}
+      >
+        {/* Pixel shield icon */}
+        <svg width="14" height="14" viewBox="0 0 8 8" style={{ imageRendering: "pixelated", flexShrink: 0 }}>
+          <rect x="2" y="0" width="4" height="1" fill={verdictColor} />
+          <rect x="1" y="1" width="6" height="1" fill={verdictColor} />
+          <rect x="1" y="2" width="6" height="1" fill={verdictColor} />
+          <rect x="1" y="3" width="6" height="1" fill={verdictColor} />
+          <rect x="2" y="4" width="4" height="1" fill={verdictColor} />
+          <rect x="2" y="5" width="4" height="1" fill={verdictColor} />
+          <rect x="3" y="6" width="2" height="1" fill={verdictColor} />
+        </svg>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A" }}>
+          SCAN LOG
+        </span>
+        <span
+          className="ml-auto"
+          style={{
+            fontFamily: PIXEL_FONT,
+            fontSize: 10,
+            color: verdictColor,
+          }}
+        >
           {product.trustScore}
         </span>
       </div>
 
       {/* Fraud checks */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" style={{ position: "relative", zIndex: 1 }}>
         {product.checks.length > 0 ? (
           product.checks.map((check, i) => (
             <FraudCheckRow key={`${check.name}-${i}`} check={check} />
           ))
         ) : (
-          <p className="text-xs text-[var(--text-subtle)] text-center py-4">
-            No fraud checks available
+          <p className="text-center py-4" style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>
+            NO DATA FOUND
           </p>
         )}
       </div>
 
-      {/* Domain */}
-      <div className="mt-2 pt-2 border-t border-[var(--surface-2)]">
-        <p className="text-[10px] font-mono text-[var(--text-subtle)] text-center">
+      {/* Domain footer */}
+      <div className="mt-2 pt-2" style={{ borderTop: "2px solid #1A1A1A40", position: "relative", zIndex: 1 }}>
+        <p className="text-center" style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#8B6914" }}>
           {product.domain}
         </p>
       </div>

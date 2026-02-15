@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ShieldCheck, ShieldAlert, Sparkles } from "lucide-react";
 import { FlipCard } from "./FlipCard";
 import { useResultsStore } from "@/stores/resultsStore";
 import type { ProductWithVerdict } from "@/types";
+
+const PIXEL_FONT = "'Press Start 2P', monospace";
 
 interface TwoColumnLayoutProps {
   trusted: ProductWithVerdict[];
@@ -29,6 +30,43 @@ const cardVariants = {
   },
 };
 
+/* Pixel heart for trusted column header */
+function PixelHeartIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+      <rect x="1" y="0" width="2" height="1" fill="#00CC00" />
+      <rect x="5" y="0" width="2" height="1" fill="#00CC00" />
+      <rect x="0" y="1" width="4" height="1" fill="#00CC00" />
+      <rect x="4" y="1" width="4" height="1" fill="#00CC00" />
+      <rect x="0" y="2" width="8" height="1" fill="#00CC00" />
+      <rect x="0" y="3" width="8" height="1" fill="#00CC00" />
+      <rect x="1" y="4" width="6" height="1" fill="#00CC00" />
+      <rect x="2" y="5" width="4" height="1" fill="#00CC00" />
+      <rect x="3" y="6" width="2" height="1" fill="#00CC00" />
+    </svg>
+  );
+}
+
+/* Pixel skull for flagged column header */
+function PixelSkullIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+      <rect x="2" y="0" width="4" height="1" fill="#F5F5F5" />
+      <rect x="1" y="1" width="6" height="1" fill="#F5F5F5" />
+      <rect x="1" y="2" width="6" height="1" fill="#F5F5F5" />
+      <rect x="1" y="3" width="2" height="1" fill="#FF0000" />
+      <rect x="5" y="3" width="2" height="1" fill="#FF0000" />
+      <rect x="3" y="3" width="2" height="1" fill="#F5F5F5" />
+      <rect x="1" y="4" width="6" height="1" fill="#F5F5F5" />
+      <rect x="3" y="4" width="2" height="1" fill="#1A1A1A" />
+      <rect x="2" y="5" width="1" height="1" fill="#1A1A1A" />
+      <rect x="3" y="5" width="2" height="1" fill="#F5F5F5" />
+      <rect x="5" y="5" width="1" height="1" fill="#1A1A1A" />
+      <rect x="2" y="6" width="4" height="1" fill="#F5F5F5" />
+    </svg>
+  );
+}
+
 export function TwoColumnLayout({
   trusted,
   flagged,
@@ -40,33 +78,51 @@ export function TwoColumnLayout({
 
   return (
     <div className="w-full">
-      {/* Section header */}
+      {/* Section header — pixel dialogue box */}
       <motion.div
-        className="text-center mb-10"
+        className="text-center mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <h2
-          className="text-2xl font-bold mb-2"
-          style={{ color: "var(--foreground)" }}
+          className="mb-2"
+          style={{ fontFamily: PIXEL_FONT, fontSize: 12, color: "#FFF8E8", textShadow: "2px 2px 0 #1A1A1A" }}
         >
-          We found {trusted.length + flagged.length} results
+          LOOT FOUND: {trusted.length + flagged.length} ITEMS
         </h2>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Hover any card to see the fraud analysis · {flagged.length} flagged as suspicious
+        <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#D4C4A0" }}>
+          Hover any card to scan for traps · {flagged.length} cursed items detected
         </p>
       </motion.div>
 
-      <div className="grid md:grid-cols-2 gap-8 mb-10">
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
         {/* Trusted Column */}
-        <div>
-          <div className="flex items-center gap-2 mb-5">
-            <ShieldCheck size={20} className="text-emerald-500" />
-            <h3 className="text-lg font-bold text-[var(--foreground)]">
-              Trusted Results
+        <div
+          style={{
+            border: "4px solid #006400",
+            background: "#FFF8E8",
+            boxShadow: "4px 4px 0 #1A1A1A, inset 0 0 0 3px #00640020",
+            padding: 16,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: "3px solid #006400" }}>
+            <PixelHeartIcon />
+            <h3 style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#006400" }}>
+              SAFE LOOT
             </h3>
-            <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            {/* Score counter */}
+            <span
+              className="ml-auto"
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: 10,
+                color: "#FFF8E8",
+                background: "#006400",
+                border: "2px solid #1A1A1A",
+                padding: "2px 8px",
+              }}
+            >
               {trusted.length}
             </span>
           </div>
@@ -94,13 +150,31 @@ export function TwoColumnLayout({
         </div>
 
         {/* Flagged Column */}
-        <div>
-          <div className="flex items-center gap-2 mb-5">
-            <ShieldAlert size={20} className="text-red-400" />
-            <h3 className="text-lg font-bold text-[var(--foreground)]">
-              Flagged Results
+        <div
+          style={{
+            border: "4px solid #8B0000",
+            background: "#FFF8E8",
+            boxShadow: "4px 4px 0 #1A1A1A, inset 0 0 0 3px #8B000020",
+            padding: 16,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-4 pb-2" style={{ borderBottom: "3px solid #8B0000" }}>
+            <PixelSkullIcon />
+            <h3 style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#8B0000" }}>
+              CURSED ITEMS
             </h3>
-            <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+            {/* Score counter */}
+            <span
+              className="ml-auto"
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: 10,
+                color: "#FFF8E8",
+                background: "#8B0000",
+                border: "2px solid #1A1A1A",
+                padding: "2px 8px",
+              }}
+            >
               {flagged.length}
             </span>
           </div>
@@ -125,48 +199,50 @@ export function TwoColumnLayout({
               </motion.div>
             ))}
             {flagged.length === 0 && (
-              <p className="text-sm text-[var(--text-subtle)] text-center py-8">
-                No flagged results — all clear!
+              <p className="text-center py-8" style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#8B6914" }}>
+                ALL CLEAR - NO TRAPS!
               </p>
             )}
           </motion.div>
         </div>
       </div>
 
-      {/* Seamless eliminate CTA — the one user action in the flow */}
+      {/* Eliminate CTA — pixel button */}
       {flagged.length > 0 && (
         <motion.div
-          className="flex flex-col items-center gap-3 py-6"
+          className="flex flex-col items-center gap-3 py-4"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: maxCol * 0.1 + 0.3, duration: 0.5 }}
         >
-          <p className="text-sm text-[var(--text-muted)]">
-            Ready to remove the {flagged.length} suspicious results?
+          <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#D4C4A0" }}>
+            Destroy {flagged.length} cursed items?
           </p>
           <button
             onClick={onEliminateFlagged}
-            className="
-              group relative flex items-center gap-2.5 px-8 py-4
-              text-white text-sm font-semibold
-              rounded-2xl overflow-hidden
-              shadow-[0_4px_20px_rgba(255,107,0,0.3)]
-              hover:shadow-[0_8px_32px_rgba(255,107,0,0.45)]
-              hover:scale-[1.03]
-              active:scale-[0.97]
-              transition-all duration-200 ease-out
-              cursor-pointer
-            "
-            style={{ background: "var(--brand)" }}
+            className="pixel-btn flex items-center gap-2 px-8 py-3 cursor-pointer"
+            style={{
+              border: "4px solid #1A1A1A",
+              background: "#FF6B00",
+              fontFamily: PIXEL_FONT,
+              fontSize: 8,
+              color: "#FFF8E8",
+              boxShadow: "4px 4px 0 #1A1A1A",
+            }}
           >
-            <Sparkles size={16} className="opacity-80" />
-            Clean Up Results
-            <motion.div
-              className="absolute inset-0 bg-white/10"
-              initial={{ x: "-100%" }}
-              whileHover={{ x: "100%" }}
-              transition={{ duration: 0.6, ease: "easeInOut" }}
-            />
+            {/* Pixel sword icon */}
+            <svg width="14" height="14" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+              <rect x="6" y="0" width="1" height="1" fill="#C0C0C0" />
+              <rect x="5" y="1" width="1" height="1" fill="#C0C0C0" />
+              <rect x="4" y="2" width="1" height="1" fill="#C0C0C0" />
+              <rect x="3" y="3" width="1" height="1" fill="#C0C0C0" />
+              <rect x="2" y="4" width="1" height="1" fill="#8B6914" />
+              <rect x="1" y="5" width="1" height="1" fill="#8B6914" />
+              <rect x="0" y="6" width="1" height="1" fill="#8B6914" />
+              <rect x="1" y="4" width="1" height="1" fill="#8B6914" />
+              <rect x="3" y="4" width="1" height="1" fill="#8B6914" />
+            </svg>
+            PURGE CURSED
           </button>
         </motion.div>
       )}
