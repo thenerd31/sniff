@@ -32,31 +32,31 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   return (
     <div
-      className="w-full mb-6"
+      className="w-full mb-8"
       style={{ animation: "dashboard-card-enter 0.35s ease-out both" }}
     >
-      <div className="dash-pixel-frame p-5">
+      <div className="dash-pixel-frame p-7">
         {/* ── Top row: Title + Verdict pills + Avg score ──────────── */}
-        <div className="flex flex-wrap items-center gap-4 mb-4">
+        <div className="flex flex-wrap items-center gap-5 mb-5">
           {/* Title + count */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 9,
+                fontSize: 14,
                 color: "#1A1A1A",
               }}
             >
               SAVED ITEMS
             </span>
             <span
-              className="px-2 py-1"
+              className="px-3 py-2"
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 8,
+                fontSize: 12,
                 color: "#FFF8E8",
                 background: "#8B6914",
-                border: "2px solid #1A1A1A",
+                border: "3px solid #1A1A1A",
                 animation: "stat-bounce 0.4s ease-out both",
               }}
             >
@@ -68,16 +68,17 @@ export function DashboardHeader({
           <div className="flex-1" />
 
           {/* Verdict count pills */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {stats.trustedCount > 0 && (
               <span
-                className="px-2 py-1"
+                className="px-3 py-2"
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 6,
+                  fontSize: 9,
                   color: "#1A1A1A",
                   background: "#00CC00",
-                  border: "2px solid #1A1A1A",
+                  border: "3px solid #1A1A1A",
+                  fontWeight: "bold",
                   animation: "stat-bounce 0.4s ease-out 0.1s both",
                 }}
               >
@@ -86,13 +87,14 @@ export function DashboardHeader({
             )}
             {stats.cautionCount > 0 && (
               <span
-                className="px-2 py-1"
+                className="px-3 py-2"
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 6,
+                  fontSize: 9,
                   color: "#1A1A1A",
                   background: "#FFD700",
-                  border: "2px solid #1A1A1A",
+                  border: "3px solid #1A1A1A",
+                  fontWeight: "bold",
                   animation: "stat-bounce 0.4s ease-out 0.2s both",
                 }}
               >
@@ -101,13 +103,14 @@ export function DashboardHeader({
             )}
             {stats.dangerCount > 0 && (
               <span
-                className="px-2 py-1"
+                className="px-3 py-2"
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 6,
+                  fontSize: 9,
                   color: "#FFFFFF",
                   background: "#FF0000",
-                  border: "2px solid #1A1A1A",
+                  border: "3px solid #1A1A1A",
+                  fontWeight: "bold",
                   animation: "stat-bounce 0.4s ease-out 0.3s both",
                 }}
               >
@@ -118,13 +121,13 @@ export function DashboardHeader({
 
           {/* Average score */}
           <div
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
             style={{ animation: "stat-bounce 0.4s ease-out 0.4s both" }}
           >
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 6,
+                fontSize: 9,
                 color: "#6B7280",
               }}
             >
@@ -133,7 +136,7 @@ export function DashboardHeader({
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 10,
+                fontSize: 16,
                 color: getAvgScoreColor(stats.averageTrustScore),
                 fontWeight: "bold",
               }}
@@ -145,7 +148,7 @@ export function DashboardHeader({
 
         {/* ── Divider ─────────────────────────────────────────────── */}
         <div
-          className="w-full mb-4"
+          className="w-full mb-5"
           style={{
             height: 3,
             background:
@@ -154,13 +157,13 @@ export function DashboardHeader({
         />
 
         {/* ── Sort controls ───────────────────────────────────────── */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 6,
+              fontSize: 9,
               color: "#8B6914",
-              marginRight: 4,
+              marginRight: 6,
             }}
           >
             SORT:
@@ -169,10 +172,11 @@ export function DashboardHeader({
             <button
               key={opt.value}
               onClick={() => onSortChange(opt.value)}
-              className={`dashboard-pixel-btn px-3 py-2 ${sortOrder === opt.value ? "selected" : ""}`}
+              className={`dashboard-pixel-btn px-4 py-3 ${sortOrder === opt.value ? "selected" : ""}`}
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 6,
+                fontSize: 8,
+                fontWeight: "bold",
                 animation: `stat-bounce 0.3s ease-out ${0.05 * i}s both`,
               }}
             >

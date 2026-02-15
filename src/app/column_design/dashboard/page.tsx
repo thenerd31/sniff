@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SavedDashboard } from "@/components/dashboard/SavedDashboard";
 import { useSavedDashboardStore } from "@/stores/savedDashboardStore";
 import type { ProductWithVerdict, FraudCheck } from "@/types";
+import type { SavedProductSnapshot } from "@/types/dashboard";
 import "./dashboard.css";
 
 // ── Mock Data — 5 saved products with mixed verdicts ─────────────────────
@@ -248,34 +249,28 @@ const SAVED_TIMESTAMPS = [
 ];
 
 function seedDashboard() {
-  const store = useSavedDashboardStore.getState();
-  // Only seed if store is empty (don't duplicate on hot reload)
-  if (Object.keys(store.savedProducts).length > 0) return;
+  // For demo: always re-seed with fresh mock data
+  try {
+    localStorage.removeItem("sniff-saved-dashboard");
+  } catch {}
 
+  // Build the seeded record immutably
+  const seeded: Record<string, SavedProductSnapshot> = {};
   MOCK_SAVED_PRODUCTS.forEach((product, i) => {
-    // Directly set snapshot with staggered timestamps
-    const snapshot = {
+    seeded[product.id] = {
       id: product.id,
       savedAt: SAVED_TIMESTAMPS[i],
       product,
     };
-    store.savedProducts[product.id] = snapshot;
   });
 
-  // Persist the seeded data
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem(
-        "sniff-saved-dashboard",
-        JSON.stringify(store.savedProducts)
-      );
-    } catch {}
-  }
+  // Persist to localStorage
+  try {
+    localStorage.setItem("sniff-saved-dashboard", JSON.stringify(seeded));
+  } catch {}
 
-  // Force a re-render by using the store's set method
-  useSavedDashboardStore.setState({
-    savedProducts: { ...store.savedProducts },
-  });
+  // Update store (immutable — triggers re-render)
+  useSavedDashboardStore.setState({ savedProducts: seeded });
 }
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
@@ -283,14 +278,12 @@ const PIXEL_FONT = "'Press Start 2P', monospace";
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardTestPage() {
-  // Seed once on mount
-  const [seeded] = useState(() => {
-    if (typeof window !== "undefined") {
-      setTimeout(() => seedDashboard(), 0);
-    }
-    return true;
-  });
-  void seeded;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    seedDashboard();
+    setReady(true);
+  }, []);
 
   return (
     <div
@@ -302,7 +295,7 @@ export default function DashboardTestPage() {
     >
       {/* ── Pixel header bar ──────────────────────────────────────── */}
       <header
-        className="relative z-30 flex shrink-0 items-center gap-4 px-5 py-2.5"
+        className="relative z-30 flex shrink-0 items-center gap-5 px-6 py-3.5"
         style={{
           borderBottom: "4px solid #1A1A1A",
           background: "#8B6914",
@@ -310,12 +303,12 @@ export default function DashboardTestPage() {
         }}
       >
         <div
-          className="flex h-7 w-7 items-center justify-center"
-          style={{ border: "2px solid #1A1A1A", background: "#FFD700" }}
+          className="flex h-9 w-9 items-center justify-center"
+          style={{ border: "3px solid #1A1A1A", background: "#FFD700" }}
         >
           <svg
-            width="14"
-            height="14"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="#1A1A1A"
@@ -329,7 +322,7 @@ export default function DashboardTestPage() {
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 9,
+            fontSize: 13,
             color: "#FFF8E8",
           }}
         >
@@ -337,14 +330,14 @@ export default function DashboardTestPage() {
         </span>
 
         <div
-          className="mx-3 h-5 w-[3px]"
+          className="mx-4 h-6 w-[3px]"
           style={{ background: "#6B5210" }}
         />
 
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 11,
             color: "#FFD700",
           }}
         >
@@ -353,9 +346,9 @@ export default function DashboardTestPage() {
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div
-            className="h-3 w-3"
+            className="h-4 w-4"
             style={{
               background: "#00CC00",
             }}
@@ -363,7 +356,7 @@ export default function DashboardTestPage() {
           <span
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 7,
+              fontSize: 9,
               color: "#00CC00",
             }}
           >
@@ -374,7 +367,22 @@ export default function DashboardTestPage() {
 
       {/* ── Main content ──────────────────────────────────────────── */}
       <div className="flex-1 py-8">
-        <SavedDashboard />
+        {ready ? (
+          <SavedDashboard />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <span
+              style={{
+                fontFamily: PIXEL_FONT,
+                fontSize: 12,
+                color: "#8B6914",
+                animation: "pixel-blink 1s steps(1) infinite",
+              }}
+            >
+              LOADING...
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ── Grass / dirt divider ──────────────────────────────────── */}

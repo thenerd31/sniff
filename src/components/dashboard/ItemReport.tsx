@@ -81,18 +81,18 @@ function FraudCheckRow({
 
   return (
     <div
-      className="dash-pixel-frame p-4"
+      className="dash-pixel-frame p-5"
       style={{
         animation: `check-row-enter 0.3s ease-out ${index * 0.1}s both`,
         boxShadow: "2px 2px 0 #8B6914",
       }}
     >
       {/* Header row */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-3 mb-3">
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 11,
             color: indicator.color,
             letterSpacing: 1,
           }}
@@ -102,7 +102,7 @@ function FraudCheckRow({
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 7,
+            fontSize: 9,
             color: "#1A1A1A",
           }}
         >
@@ -112,19 +112,19 @@ function FraudCheckRow({
 
       {/* Detail text */}
       <p
-        className="mb-3"
+        className="mb-4"
         style={{
           fontFamily: PIXEL_FONT,
-          fontSize: 6,
+          fontSize: 8,
           color: "#4A3A2A",
-          lineHeight: 2,
+          lineHeight: 2.2,
         }}
       >
         {check.detail}
       </p>
 
       {/* Severity bar */}
-      <div className="pixel-severity-bar">
+      <div className="pixel-severity-bar" style={{ height: 10 }}>
         <div
           className={`pixel-severity-fill ${getSeverityClass(check.severity)}`}
           style={{ width: `${check.severity * 100}%` }}
@@ -155,11 +155,11 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
   return (
     <div style={{ animation: "dashboard-report-expand 0.35s ease-out both" }}>
       {/* ── Trust Score Header ────────────────────────────────────── */}
-      <div className="flex flex-col items-center gap-3 mb-6">
+      <div className="flex flex-col items-center gap-4 mb-8">
         <div
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 28,
+            fontSize: 36,
             color: verdictColor,
             animation: "score-pulse 2s ease-in-out infinite",
           }}
@@ -169,7 +169,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 9,
+            fontSize: 12,
             color: verdictColor,
           }}
         >
@@ -177,12 +177,13 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
         </span>
 
         {/* Segmented score bar */}
-        <div className="flex gap-1 w-full max-w-xs">
+        <div className="flex gap-1.5 w-full max-w-sm">
           {Array.from({ length: 10 }).map((_, i) => (
             <div
               key={i}
               className={`score-segment ${i < filledSegments ? `filled verdict-${product.verdict}` : ""}`}
               style={{
+                height: 14,
                 animationDelay: `${i * 0.05}s`,
               }}
             />
@@ -192,7 +193,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 6,
+            fontSize: 8,
             color: "#6B7280",
           }}
         >
@@ -202,7 +203,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
 
       {/* ── Divider ───────────────────────────────────────────────── */}
       <div
-        className="w-full my-4"
+        className="w-full my-5"
         style={{
           height: 3,
           background:
@@ -211,18 +212,18 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
       />
 
       {/* ── Fraud Checks ──────────────────────────────────────────── */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h3
-          className="mb-4"
+          className="mb-5"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 11,
             color: "#8B6914",
           }}
         >
           FRAUD ANALYSIS
         </h3>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {product.checks.map((check, i) => (
             <FraudCheckRow
               key={`${check.name}-${i}`}
@@ -234,7 +235,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
             <p
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 7,
+                fontSize: 9,
                 color: "#6B7280",
                 textAlign: "center",
               }}
@@ -247,7 +248,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
 
       {/* ── Divider ───────────────────────────────────────────────── */}
       <div
-        className="w-full my-4"
+        className="w-full my-5"
         style={{
           height: 3,
           background:
@@ -256,35 +257,35 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
       />
 
       {/* ── Recommendations ───────────────────────────────────────── */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h3
-          className="mb-4"
+          className="mb-5"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 11,
             color: "#8B6914",
           }}
         >
           RECOMMENDATIONS
         </h3>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {recommendations.map((rec, i) => (
-            <div key={i} className="flex items-start gap-2">
+            <div key={i} className="flex items-start gap-3">
               <div
-                className="mt-1 shrink-0"
+                className="mt-1.5 shrink-0"
                 style={{
-                  width: 6,
-                  height: 6,
+                  width: 8,
+                  height: 8,
                   background: "#FFD700",
-                  border: "1px solid #1A1A1A",
+                  border: "2px solid #1A1A1A",
                 }}
               />
               <p
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 6,
+                  fontSize: 8,
                   color: "#4A3A2A",
-                  lineHeight: 2,
+                  lineHeight: 2.2,
                 }}
               >
                 {rec}
@@ -296,8 +297,8 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
 
       {/* ── Metadata Footer ───────────────────────────────────────── */}
       <div
-        className="flex flex-wrap items-center justify-between gap-2 pt-3"
-        style={{ borderTop: "2px solid #D4C4A0" }}
+        className="flex flex-wrap items-center justify-between gap-3 pt-4"
+        style={{ borderTop: "3px solid #D4C4A0" }}
       >
         <a
           href={product.url}
@@ -305,7 +306,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
           rel="noopener noreferrer"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 6,
+            fontSize: 8,
             color: "#FF6B00",
             textDecoration: "none",
           }}
@@ -315,7 +316,7 @@ export function ItemReport({ product, savedAt }: ItemReportProps) {
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 6,
+            fontSize: 8,
             color: "#6B7280",
           }}
         >
