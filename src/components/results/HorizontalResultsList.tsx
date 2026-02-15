@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Trophy } from "lucide-react";
 import { FlipCard } from "./FlipCard";
 import { useResultsStore } from "@/stores/resultsStore";
 import type { ProductWithVerdict } from "@/types";
+
+const PIXEL_FONT = "'Press Start 2P', monospace";
 
 interface HorizontalResultsListProps {
   products: ProductWithVerdict[];
@@ -35,28 +36,43 @@ export function HorizontalResultsList({
   const savedItems = useResultsStore((s) => s.savedItems);
   const toggleSave = useResultsStore((s) => s.toggleSave);
 
-  // Sort by price ascending
   const sorted = [...products].sort((a, b) => a.price - b.price);
-
-  // If no explicit bestPick, cheapest trusted is the best pick
   const topPickId = bestPickId || sorted[0]?.id;
 
   return (
     <div className="w-full">
-      {/* Header */}
+      {/* Header — pixel style */}
       <div className="flex items-center gap-3 mb-6">
-        <Trophy size={22} className="text-[var(--brand)]" />
-        <h2 className="text-xl font-bold text-[var(--foreground)]">
-          Your Best Deals
+        {/* Pixel trophy */}
+        <svg width="20" height="20" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+          <rect x="1" y="0" width="6" height="1" fill="#FFD700" />
+          <rect x="0" y="1" width="8" height="1" fill="#FFD700" />
+          <rect x="0" y="2" width="8" height="1" fill="#FFD700" />
+          <rect x="1" y="3" width="6" height="1" fill="#FFD700" />
+          <rect x="2" y="4" width="4" height="1" fill="#FFD700" />
+          <rect x="3" y="5" width="2" height="1" fill="#8B6914" />
+          <rect x="2" y="6" width="4" height="1" fill="#8B6914" />
+        </svg>
+        <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 10, color: "#FFF8E8", textShadow: "2px 2px 0 #1A1A1A" }}>
+          BEST DEALS
         </h2>
-        <span className="text-sm text-[var(--text-subtle)]">
-          Sorted by price · {sorted.length} results
+        <span
+          style={{
+            fontFamily: PIXEL_FONT,
+            fontSize: 7,
+            color: "#FFF8E8",
+            background: "#8B6914",
+            border: "2px solid #1A1A1A",
+            padding: "2px 8px",
+          }}
+        >
+          {sorted.length} ITEMS
         </span>
       </div>
 
       {/* Horizontal scrollable list */}
       <motion.div
-        className="results-scroll flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4 px-1"
+        className="results-scroll flex gap-5 overflow-x-auto snap-x snap-mandatory pb-4 px-1"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

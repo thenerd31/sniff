@@ -100,6 +100,25 @@ html {
   95% { opacity: 0; }
 }
 
+@keyframes cloud-scroll {
+  0% { transform: translateX(-10%); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes legendary-glow {
+  0%, 100% {
+    box-shadow: 0 4px 0 #000, 0 0 6px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 4px 0 #000, 0 0 14px rgba(255, 215, 0, 0.7), 0 0 24px rgba(255, 215, 0, 0.3);
+  }
+}
+
 /* Pixel button press effect */
 .pixel-btn {
   image-rendering: pixelated;
@@ -116,13 +135,16 @@ html {
   pointer-events: none;
 }
 
-/* Dog node — smooth position transitions within React Flow */
-.react-flow__node-dogNode {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  pointer-events: none !important;
-  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+/* Cloud float animation for investigation clouds */
+@keyframes cloud-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Hide scrollbar on cloud track */
+.cloud-track::-webkit-scrollbar {
+  height: 0;
+}
+.cloud-track {
+  scrollbar-width: none;
 }

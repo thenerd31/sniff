@@ -193,13 +193,15 @@ export async function runFraudChecks(
     }
   }
 
-  // Weights: 5 checks, rebalanced so junk signals don't dominate
+  // Weights: checks, rebalanced so junk signals don't dominate
   const weights: Record<FraudCheckName, number> = {
     "Retailer Reputation": 0.30,  // WHOIS + price anomaly
     "Safety Database": 0.05,      // binary, rarely fails
     "Community Sentiment": 0.30,  // Reddit presence is a strong signal
     "Brand Impersonation": 0.15,  // catches typosquatting
     "Page Red Flags": 0.20,       // urgency, missing policies, suspicious payments
+    "Seller Verification": 0.20,  // seller page analysis
+    "Link Verification": 0.15,   // dead links = bad data
   };
 
   let weightedScore = 0;
@@ -339,8 +341,8 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
       return {
         name: "Community Sentiment",
         status: "warning",
-        detail: `No Reddit mentions found for ${product.domain} — zero online presence is a red flag`,
-        severity: 0.7,
+        detail: `No Reddit mentions found for ${product.domain} — limited online presence`,
+        severity: 0.45,
       };
     }
 

@@ -20,7 +20,23 @@ const HIGH_AUTHORITY_DOMAINS = new Set([
   "ebay.com", "walmart.com", "target.com", "bestbuy.com", "etsy.com",
   "shopify.com", "aliexpress.com", "rakuten.com", "wayfair.com",
   "costco.com", "homedepot.com", "lowes.com", "macys.com",
-  "nordstrom.com", "zappos.com", "chewy.com",
+  "nordstrom.com", "zappos.com", "chewy.com", "kohls.com",
+  "jcpenney.com", "samsclub.com", "overstock.com", "newegg.com",
+  "bhphotovideo.com", "adorama.com", "gamestop.com",
+  "dickssportinggoods.com", "academy.com", "rei.com",
+  "sephora.com", "ulta.com", "bathandbodyworks.com",
+
+  // Fashion / Apparel
+  "hm.com", "zara.com", "uniqlo.com", "asos.com", "gap.com",
+  "oldnavy.com", "nike.com", "adidas.com", "underarmour.com",
+  "newbalance.com", "puma.com", "lululemon.com", "patagonia.com",
+  "brooksbrothers.com", "jcrew.com", "anthropologie.com",
+  "urbanoutfitters.com", "freepeople.com", "forever21.com",
+  "shein.com", "ssense.com", "farfetch.com", "mrporter.com",
+
+  // Electronics / Tech brands
+  "samsung.com", "sony.com", "dell.com", "hp.com", "lenovo.com",
+  "asus.com", "bose.com", "lg.com", "canon.com", "nikon.com",
 
   // Finance
   "paypal.com", "stripe.com", "chase.com", "bankofamerica.com",

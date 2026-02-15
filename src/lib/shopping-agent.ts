@@ -197,11 +197,15 @@ export async function runShoppingAgent(
   const caution = validated.filter((v) => v.verdict === "caution");
   const danger  = validated.filter((v) => v.verdict === "danger");
 
-  // Best pick = cheapest trusted product; fall back to cheapest caution
-  const candidates = trusted.length > 0 ? trusted : caution;
-  const bestPick = candidates
+  // Best pick = cheapest trusted product ONLY — never recommend caution items.
+  // Among trusted, prefer higher trust score first, then lowest price.
+  const bestPick = trusted
     .filter((v) => v.product.price > 0)
-    .sort((a, b) => a.product.price - b.product.price)[0];
+    .sort((a, b) => {
+      // Prefer higher trust score; break ties by lower price
+      if (b.trustScore !== a.trustScore) return b.trustScore - a.trustScore;
+      return a.product.price - b.product.price;
+    })[0];
 
   if (bestPick) {
     const savings =

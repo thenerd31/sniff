@@ -12,6 +12,11 @@ interface ClarifyingQuestionsProps {
   refinements: Refinement[];
   productName: string;
   onComplete: (refinedQuery: string, answers: ClarifyAnswer[]) => void;
+  /** Called when user clicks "Ask me more" and all current refinements are exhausted.
+   *  The parent should fetch a new question and append it to the refinements list. */
+  onAskMore?: (answers: ClarifyAnswer[]) => void;
+  /** True while the parent is fetching the next question from the API. */
+  loadingMore?: boolean;
 }
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
@@ -35,6 +40,8 @@ export function ClarifyingQuestions({
   refinements,
   productName,
   onComplete,
+  onAskMore,
+  loadingMore,
 }: ClarifyingQuestionsProps) {
   const [phase, setPhase] = useState<ClarifyPhase | "reviewing">("loading");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,12 +49,25 @@ export function ClarifyingQuestions({
   const [cardKey, setCardKey] = useState(0);
   const [exiting, setExiting] = useState(false);
 
-  // Loading → asking after 0.8s
+  // Loading → asking after 0.8s (initial load or waiting for new question)
   useEffect(() => {
     if (phase !== "loading") return;
+    // If we're waiting for the parent to fetch a new question, don't auto-advance
+    if (loadingMore) return;
+    // If a new refinement is available at the next index, advance to it
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < refinements.length && answers.length > 0) {
+      const timer = setTimeout(() => {
+        setCurrentIndex(nextIndex);
+        setPhase("asking");
+        setCardKey((prev) => prev + 1);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+    // First load
     const timer = setTimeout(() => setPhase("asking"), 800);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [phase, loadingMore, refinements.length, currentIndex, answers.length]);
 
   // User answers a question → transition to "reviewing"
   const handleAnswer = useCallback(
@@ -79,10 +99,11 @@ export function ClarifyingQuestions({
     }, 400);
   }, []);
 
-  // User clicks "Ask me more" → next question (or force complete if out of questions)
+  // User clicks "Ask me more" → next question, fetch more, or force complete
   const handleContinue = useCallback(() => {
     const nextIndex = currentIndex + 1;
     if (nextIndex < refinements.length) {
+      // There's already a next question queued up
       setExiting(true);
       setTimeout(() => {
         setExiting(false);
@@ -90,15 +111,23 @@ export function ClarifyingQuestions({
         setPhase("asking");
         setCardKey((prev) => prev + 1);
       }, 400);
+    } else if (onAskMore) {
+      // Ask the parent to fetch a new question from the API
+      setExiting(true);
+      setTimeout(() => {
+        setExiting(false);
+        setPhase("loading");
+      }, 400);
+      onAskMore(answers);
     } else {
-      // No more pre-generated questions — auto-complete
+      // No callback — auto-complete (backwards compat)
       setExiting(true);
       setTimeout(() => {
         setExiting(false);
         setPhase("completing");
       }, 400);
     }
-  }, [currentIndex, refinements.length]);
+  }, [currentIndex, refinements.length, onAskMore, answers]);
 
   // Completion popup done → fire onComplete
   const handleCompletionDone = useCallback(() => {

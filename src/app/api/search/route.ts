@@ -85,8 +85,12 @@ export async function POST(req: NextRequest) {
         productName = understanding.productName;
       }
 
+      let urlHost = "";
+      if (url) {
+        try { urlHost = new URL(url).hostname; } catch {}
+      }
       send("narration", {
-        text: `Searching for "${productName}"${url ? ` (from ${new URL(url).hostname})` : ""}...`,
+        text: `Searching for "${productName}"${urlHost ? ` (from ${urlHost})` : ""}...`,
       });
 
       // ════════════════════════════════════════════════════════════════

@@ -1,12 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ClarifyingQuestions } from "@/components/clarify/ClarifyingQuestions";
 import type { Refinement, ClarifyAnswer } from "@/types/clarify";
+import type { ConversationMessage } from "@/types";
 import "./clarify.css";
 
 const PIXEL_FONT = "'Press Start 2P', monospace";
+
+// Convert /api/shop/refine "question" response to a Refinement
+function refineResponseToRefinement(data: {
+  question: string;
+  dimension?: string;
+  options: Array<{ label: string; description?: string; value: string }>;
+}): Refinement {
+  // Use the dimension field from the refiner if available, otherwise extract from question
+  let label = "Preference";
+  if (data.dimension) {
+    // Capitalize first letter
+    label = data.dimension.charAt(0).toUpperCase() + data.dimension.slice(1);
+  } else {
+    const q = data.question.toLowerCase();
+    if (q.includes("style") || q.includes("aesthetic") || q.includes("look")) label = "Style";
+    else if (q.includes("budget") || q.includes("price") || q.includes("spend")) label = "Budget";
+    else if (q.includes("size") || q.includes("fit")) label = "Size";
+    else if (q.includes("color") || q.includes("colour")) label = "Color";
+    else if (q.includes("brand")) label = "Brand";
+    else if (q.includes("use") || q.includes("occasion") || q.includes("purpose") || q.includes("wear") || q.includes("where")) label = "Use Case";
+    else if (q.includes("material") || q.includes("fabric")) label = "Material";
+    else if (q.includes("feature") || q.includes("priority")) label = "Features";
+    else if (q.includes("type") || q.includes("kind") || q.includes("category")) label = "Type";
+  }
+
+  return {
+    label,
+    questionText: data.question,
+    options: data.options.map((o) => o.label),
+    type: "buttons",
+  };
+}
 
 // ── Page ─────────────────────────────────────────────────────────────────
 
@@ -16,47 +49,193 @@ export default function ClarifyTestPage() {
   const queryParam = searchParams.get("q") || "jacket";
 
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [refinedQuery, setRefinedQuery] = useState("");
   const [collectedAnswers, setCollectedAnswers] = useState<ClarifyAnswer[]>([]);
   const [productName, setProductName] = useState(queryParam);
   const [refinements, setRefinements] = useState<Refinement[]>([]);
+  const historyRef = useRef<ConversationMessage[]>([]);
+  // Store the raw refine option values so we can build proper history
+  const optionValuesRef = useRef<Map<string, string>>(new Map());
 
-  // Call /api/clarify on mount
+  // Call /api/shop/refine on mount (first turn)
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/clarify", {
+        const res = await fetch("/api/shop/refine", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query: queryParam }),
         });
         const data = await res.json();
 
-        if (data.ready) {
-          // Query is specific enough — skip straight to board_test
-          router.push(`/board_test?query=${encodeURIComponent(queryParam)}`);
+        if (data.type === "ready" || data.error) {
+          // Query is specific enough — skip straight to board
+          const q = data.refinedQuery || queryParam;
+          window.location.href = `/board_test?query=${encodeURIComponent(q)}`;
           return;
         }
 
-        setProductName(data.productName || queryParam);
-        setRefinements(data.refinements || []);
+        // Store the question in history
+        if (data.question) {
+          historyRef.current.push({
+            role: "assistant",
+            content: data.question,
+          });
+        }
+
+        // Map option labels → values for history tracking
+        if (Array.isArray(data.options)) {
+          for (const opt of data.options) {
+            optionValuesRef.current.set(opt.label, opt.value || opt.label);
+          }
+        }
+
+        setProductName(queryParam);
+        setRefinements([refineResponseToRefinement(data)]);
         setLoading(false);
       } catch {
-        // On error, go to board_test with raw query
-        router.push(`/board_test?query=${encodeURIComponent(queryParam)}`);
+        window.location.href = `/board_test?query=${encodeURIComponent(queryParam)}`;
       }
     })();
   }, [queryParam, router]);
 
+  // Called when user clicks "Ask me more" and all current refinements are used up
+  const handleAskMore = useCallback(
+    async (answers: ClarifyAnswer[]) => {
+      setLoadingMore(true);
+
+      // Add the last answer to history
+      const lastAnswer = answers[answers.length - 1];
+      if (lastAnswer) {
+        const value = optionValuesRef.current.get(lastAnswer.value) || lastAnswer.value;
+        historyRef.current.push({
+          role: "user",
+          content: value,
+        });
+      }
+
+      try {
+        let res = await fetch("/api/shop/refine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: queryParam,
+            history: historyRef.current,
+          }),
+        });
+        let data = await res.json();
+
+        // If the refiner says "ready" but user clicked "Ask me more",
+        // override: tell it which dimensions are covered and ask for a NEW one
+        if (data.type === "ready" && !data.error) {
+          const coveredDimensions = answers.map((a) => a.label).join(", ");
+          historyRef.current.push({
+            role: "user",
+            content: `I want to keep narrowing down. I've already answered about: ${coveredDimensions}. Ask me about a COMPLETELY DIFFERENT dimension I haven't covered yet — like budget, brand, material, color, size, or specific features. Do NOT repeat any topic I already answered.`,
+          });
+          res = await fetch("/api/shop/refine", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              query: queryParam,
+              history: historyRef.current,
+            }),
+          });
+          data = await res.json();
+
+          // If it STILL says ready after the nudge, then complete
+          if (data.type === "ready" || data.error) {
+            const q = data.refinedQuery || `${queryParam} ${answers.map((a) => a.value).join(" ")}`;
+            setRefinedQuery(q);
+            setCollectedAnswers(answers);
+            setCompleted(true);
+            setTimeout(() => {
+              window.location.href = `/board_test?query=${encodeURIComponent(q)}`;
+            }, 2500);
+            return;
+          }
+        }
+
+        if (data.error) {
+          const q = `${queryParam} ${answers.map((a) => a.value).join(" ")}`;
+          setRefinedQuery(q);
+          setCollectedAnswers(answers);
+          setCompleted(true);
+          setTimeout(() => {
+            window.location.href = `/board_test?query=${encodeURIComponent(q)}`;
+          }, 2500);
+          return;
+        }
+
+        // New question — append to refinements
+        if (data.question) {
+          historyRef.current.push({
+            role: "assistant",
+            content: data.question,
+          });
+        }
+        if (Array.isArray(data.options)) {
+          for (const opt of data.options) {
+            optionValuesRef.current.set(opt.label, opt.value || opt.label);
+          }
+        }
+
+        setRefinements((prev) => [...prev, refineResponseToRefinement(data)]);
+      } catch {
+        // On error, just proceed with what we have
+        const q = `${queryParam} ${answers.map((a) => a.value).join(" ")}`;
+        setRefinedQuery(q);
+        setCollectedAnswers(answers);
+        setCompleted(true);
+        setTimeout(() => {
+          window.location.href = `/board_test?query=${encodeURIComponent(q)}`;
+        }, 2500);
+      } finally {
+        setLoadingMore(false);
+      }
+    },
+    [queryParam, router]
+  );
+
   function handleComplete(query: string, answers: ClarifyAnswer[]) {
-    setRefinedQuery(query);
-    setCollectedAnswers(answers);
-    setCompleted(true);
-    // Navigate to board_test after a brief pause to show completion
-    setTimeout(() => {
-      router.push(`/board_test?query=${encodeURIComponent(query)}`);
-    }, 2500);
+    // Add final answer to history and call refine with forceSearch
+    const lastAnswer = answers[answers.length - 1];
+    if (lastAnswer) {
+      const value = optionValuesRef.current.get(lastAnswer.value) || lastAnswer.value;
+      historyRef.current.push({ role: "user", content: value });
+    }
+
+    // Fire forceSearch to get optimized search queries
+    (async () => {
+      try {
+        const res = await fetch("/api/shop/refine", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: queryParam,
+            history: historyRef.current,
+            forceSearch: true,
+          }),
+        });
+        const data = await res.json();
+        const q = data.refinedQuery || query;
+        setRefinedQuery(q);
+        setCollectedAnswers(answers);
+        setCompleted(true);
+        setTimeout(() => {
+          window.location.href = `/board_test?query=${encodeURIComponent(q)}`;
+        }, 2500);
+      } catch {
+        setRefinedQuery(query);
+        setCollectedAnswers(answers);
+        setCompleted(true);
+        setTimeout(() => {
+          window.location.href = `/board_test?query=${encodeURIComponent(query)}`;
+        }, 2500);
+      }
+    })();
   }
 
   if (loading) {
@@ -150,9 +329,11 @@ export default function ClarifyTestPage() {
             refinements={refinements}
             productName={productName}
             onComplete={handleComplete}
+            onAskMore={handleAskMore}
+            loadingMore={loadingMore}
           />
         ) : (
-          /* Post-completion: show refined query (in real app, would navigate to /board_test) */
+          /* Post-completion: show refined query */
           <div
             className="pixel-frame p-8 flex flex-col items-center gap-4"
             style={{ animation: "clarify-card-enter 0.4s ease-out both" }}
@@ -164,7 +345,7 @@ export default function ClarifyTestPage() {
                 color: "#00CC00",
               }}
             >
-              ✓ QUEST ACCEPTED
+              QUEST ACCEPTED
             </h2>
             <div
               className="w-full px-4 py-3"
