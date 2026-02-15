@@ -10,6 +10,7 @@ const PIXEL_FONT = "'Press Start 2P', monospace";
 interface HorizontalResultsListProps {
   products: ProductWithVerdict[];
   bestPickId: string | null;
+  onContinue?: () => void;
 }
 
 const containerVariants = {
@@ -32,6 +33,7 @@ const cardVariants = {
 export function HorizontalResultsList({
   products,
   bestPickId,
+  onContinue,
 }: HorizontalResultsListProps) {
   const savedItems = useResultsStore((s) => s.savedItems);
   const toggleSave = useResultsStore((s) => s.toggleSave);
@@ -96,6 +98,38 @@ export function HorizontalResultsList({
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Continue button */}
+      {onContinue && (
+        <motion.div
+          className="flex justify-center mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: sorted.length * 0.08 + 0.5, duration: 0.4, ease: "easeOut" }}
+        >
+          <button
+            onClick={onContinue}
+            className="pixel-btn flex items-center gap-2 px-10 py-3 cursor-pointer"
+            style={{
+              border: "4px solid #1A1A1A",
+              background: "#FF6B00",
+              fontFamily: PIXEL_FONT,
+              fontSize: 10,
+              color: "#FFF8E8",
+              boxShadow: "4px 4px 0 #1A1A1A",
+            }}
+          >
+            CONTINUE
+            {/* Pixel arrow */}
+            <svg width="12" height="12" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+              <rect x="1" y="3" width="4" height="2" fill="#FFF8E8" />
+              <rect x="4" y="2" width="1" height="4" fill="#FFF8E8" />
+              <rect x="5" y="3" width="1" height="2" fill="#FFF8E8" />
+              <rect x="6" y="3.5" width="1" height="1" fill="#FFF8E8" />
+            </svg>
+          </button>
+        </motion.div>
+      )}
     </div>
   );
 }

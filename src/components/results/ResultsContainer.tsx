@@ -34,6 +34,9 @@ export function ResultsContainer() {
   const handleShuffleComplete = useCallback(() => {
     setPhase("final-list");
   }, [setPhase]);
+  const handleContinue = useCallback(() => {                                                                                        
+    setPhase("done");                                                                                                                 
+  }, [setPhase]);                                                                                                                   
 
   if (phase === "hidden") return null;
 
@@ -91,6 +94,7 @@ export function ResultsContainer() {
           <HorizontalResultsList
             products={sortedTrusted}
             bestPickId={bestPickId}
+            onContinue={handleContinue}
           />
         </motion.div>
       )}

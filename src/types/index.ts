@@ -170,7 +170,8 @@ export type ResultsPhase =
   | "two-columns"
   | "wiping"
   | "shuffling"
-  | "final-list";
+  | "final-list"
+  | "done";
 
 export type SearchSSEEvent =
   | { event: "narration"; data: { text: string } }
