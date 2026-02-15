@@ -82,15 +82,15 @@ export function SavedItemCard({
       }}
     >
       {/* ── Collapsed Summary ──────────────────────────────────────── */}
-      <div className="p-6">
+      <div className="p-8">
         {/* Title */}
         <h3
-          className="mb-3"
+          className="mb-4"
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 8,
+            fontSize: 11,
             color: "#1A1A1A",
-            lineHeight: 1.8,
+            lineHeight: 2,
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
@@ -101,11 +101,11 @@ export function SavedItemCard({
         </h3>
 
         {/* Price + Retailer row */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <span
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 12,
+              fontSize: 16,
               color: "#FF6B00",
             }}
           >
@@ -114,7 +114,7 @@ export function SavedItemCard({
           <span
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 6,
+              fontSize: 9,
               color: "#8B6914",
             }}
           >
@@ -123,17 +123,17 @@ export function SavedItemCard({
         </div>
 
         {/* Verdict badge + Trust score */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-6">
           <span
             className={`pixel-verdict-badge ${getVerdictClass(product.verdict)}`}
           >
             {product.verdict.toUpperCase()}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 6,
+                fontSize: 9,
                 color: "#6B7280",
               }}
             >
@@ -142,7 +142,7 @@ export function SavedItemCard({
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 10,
+                fontSize: 14,
                 color: getScoreColor(product.verdict),
                 fontWeight: "bold",
               }}
@@ -154,11 +154,11 @@ export function SavedItemCard({
 
         {/* Rating if available */}
         {product.rating && (
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-3 mb-5">
             <span
               style={{
                 fontFamily: PIXEL_FONT,
-                fontSize: 6,
+                fontSize: 9,
                 color: "#8B6914",
               }}
             >
@@ -168,7 +168,7 @@ export function SavedItemCard({
               <span
                 style={{
                   fontFamily: PIXEL_FONT,
-                  fontSize: 6,
+                  fontSize: 8,
                   color: "#6B7280",
                 }}
               >
@@ -179,13 +179,13 @@ export function SavedItemCard({
         )}
 
         {/* Action buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <button
             onClick={handleToggle}
-            className="dashboard-pixel-btn flex-1 px-3 py-3 text-center"
+            className="dashboard-pixel-btn flex-1 px-4 py-4 text-center"
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 7,
+              fontSize: 9,
               color: "#1A1A1A",
               fontWeight: "bold",
             }}
@@ -194,10 +194,10 @@ export function SavedItemCard({
           </button>
           <button
             onClick={handleRemove}
-            className="dashboard-pixel-btn danger-btn px-3 py-3 text-center"
+            className="dashboard-pixel-btn danger-btn px-4 py-4 text-center"
             style={{
               fontFamily: PIXEL_FONT,
-              fontSize: 7,
+              fontSize: 9,
               fontWeight: "bold",
             }}
           >
@@ -209,10 +209,10 @@ export function SavedItemCard({
       {/* ── Expanded Report ────────────────────────────────────────── */}
       {isExpanded && (
         <div
-          className="px-6 pb-6"
+          className="px-8 pb-8"
           style={{ borderTop: "3px solid #1A1A1A" }}
         >
-          <div className="pt-6">
+          <div className="pt-8">
             <ItemReport product={product} savedAt={snapshot.savedAt} />
           </div>
         </div>
