@@ -35,7 +35,14 @@ const PRICE_PATTERNS = [
   /save\s+\$?\d{2,}/i,
 ];
 
-export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
+/**
+ * Scrape a retailer's homepage for red flags.
+ * @param url       The retailer URL to scan
+ * @param productTitle  Optional — the product title from search results.
+ *                      If provided, checks for content mismatch (page sells
+ *                      coat hooks but Google Shopping says Sony headphones).
+ */
+export async function scrapeForRedFlags(url: string, productTitle?: string): Promise<EvidenceCard[]> {
   try {
     const response = await fetch(url, {
       headers: {
@@ -46,6 +53,10 @@ export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
       redirect: "follow",
       signal: AbortSignal.timeout(15000),
     });
+
+    // Check if response redirected to a different domain
+    const requestDomain = new URL(url).hostname.replace(/^www\./, "");
+    const responseDomain = new URL(response.url).hostname.replace(/^www\./, "");
 
     if (!response.ok) {
       return [
@@ -66,6 +77,15 @@ export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
     const html = await response.text();
     const textContent = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
     const flags: RedFlag[] = [];
+
+    // Check for redirect to a different domain
+    if (requestDomain !== responseDomain) {
+      flags.push({
+        label: "Domain redirect detected",
+        severity: "critical",
+        detail: `${requestDomain} redirects to ${responseDomain} — legitimate retailers don't redirect to unrelated domains`,
+      });
+    }
 
     // Check for urgency tactics
     for (const pattern of URGENCY_PATTERNS) {
@@ -139,6 +159,53 @@ export async function scrapeForRedFlags(url: string): Promise<EvidenceCard[]> {
           severity: "info",
           detail: `Page was published ${daysSince} days ago`,
         });
+      }
+    }
+
+    // Check for fake trust badges (text claims without real verification)
+    const FAKE_TRUST_PATTERNS = [
+      /ssl\s+(?:certified|secured?|protected)/i,
+      /(?:100%|fully)\s+(?:secure|safe)\s+(?:payment|checkout|shopping)/i,
+      /(?:verified|certified)\s+(?:by|secure)\s+(?:visa|mastercard|paypal|norton|mcafee)/i,
+      /money.?back\s+guarantee.*?(?:100%|no\s+questions)/i,
+      /trusted\s+(?:shop|store|seller)\s+(?:certified|verified|guaranteed)/i,
+    ];
+    for (const pattern of FAKE_TRUST_PATTERNS) {
+      const match = textContent.match(pattern);
+      if (match) {
+        flags.push({
+          label: "Fake trust badge",
+          severity: "warning",
+          detail: `Claims "${match[0].trim()}" — scam sites commonly display fake security badges`,
+        });
+        break;
+      }
+    }
+
+    // Check for content mismatch: Google Shopping says "Sony headphones"
+    // but the page is actually about coat hooks
+    if (productTitle) {
+      const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+      const pageTitle = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, "").trim() : "";
+
+      if (pageTitle && pageTitle.length > 10) {
+        // Extract key product words from the search result title
+        const productWords = productTitle
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => w.length > 3 && !/^(with|from|the|and|for)$/.test(w));
+
+        const pageTitleLower = pageTitle.toLowerCase();
+        const matchCount = productWords.filter((w) => pageTitleLower.includes(w)).length;
+        const matchRatio = productWords.length > 0 ? matchCount / productWords.length : 1;
+
+        if (matchRatio < 0.2 && productWords.length >= 3) {
+          flags.push({
+            label: "Content mismatch",
+            severity: "critical",
+            detail: `Google Shopping lists "${productTitle.slice(0, 60)}" but page title is "${pageTitle.slice(0, 60)}" — SEO poisoning or bait-and-switch`,
+          });
+        }
       }
     }
 
