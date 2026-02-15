@@ -106,7 +106,8 @@ export type FraudCheckName =
   | "Community Sentiment"
   | "Brand Impersonation"
   | "Page Red Flags"
-  | "Seller Verification";
+  | "Seller Verification"
+  | "Link Verification";
 
 export type FraudCheckStatus = "passed" | "warning" | "failed" | "pending";
 

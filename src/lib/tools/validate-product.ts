@@ -1,12 +1,13 @@
 // src/lib/tools/validate-product.ts
 // Per-product fraud validation for the shopping pipeline.
-// Runs 4 independent checks and returns FraudCheck[] + computes a trust verdict.
+// Runs 5 independent checks and returns FraudCheck[] + computes a trust verdict.
 //
 // Checks:
-//   1. Price Anomaly      — price vs. median of all results  → "Page Red Flags"
-//   2. Semantic Domain    — LLM: is this domain a credible seller for this product?  → "Retailer Reputation"
-//   3. Community Sentiment — Reddit reputation of the domain  → "Community Sentiment"
-//   4. Safety Database    — Google Safe Browsing + ScamAdviser  → "Safety Database"
+//   1. Price Anomaly        — price vs. median of all results  → "Page Red Flags"
+//   2. Brand Impersonation  — deterministic: domain contains brand name but isn't official  → "Brand Impersonation"
+//   3. Semantic Domain      — LLM: is this domain a credible seller for this product?  → "Retailer Reputation"
+//   4. Community Sentiment  — Reddit reputation of the domain  → "Community Sentiment"
+//   5. Safety Database      — Google Safe Browsing + ScamAdviser  → "Safety Database"
 
 import OpenAI from "openai";
 import type {
@@ -15,6 +16,7 @@ import type {
   ProductResult,
   ProductVerdict,
 } from "@/types";
+import { isHighAuthorityDomain } from "@/lib/known-domains";
 import { redditSearch } from "./reddit";
 import { safeBrowsingCheck } from "./safe-browsing";
 import { scamadviserCheck } from "./scamadviser";
@@ -80,7 +82,110 @@ export function priceAnomalyCheck(
   };
 }
 
-// ── Check 2: Semantic Domain ──────────────────────────────────────────────────
+// ── Check 2: Brand Impersonation (deterministic) ────────────────────────────
+// Catches domains like "ebayitsworthmore.com" or "amazonsale-deals.com" that
+// embed a major brand/retailer name but aren't the official domain.
+
+const BRAND_DOMAINS: Record<string, string> = {
+  ebay: "ebay.com",
+  amazon: "amazon.com",
+  walmart: "walmart.com",
+  apple: "apple.com",
+  bestbuy: "bestbuy.com",
+  target: "target.com",
+  costco: "costco.com",
+  nike: "nike.com",
+  adidas: "adidas.com",
+  samsung: "samsung.com",
+  sony: "sony.com",
+  bose: "bose.com",
+  dell: "dell.com",
+  newegg: "newegg.com",
+  nordstrom: "nordstrom.com",
+  macys: "macys.com",
+  sephora: "sephora.com",
+  wayfair: "wayfair.com",
+  homedepot: "homedepot.com",
+  lowes: "lowes.com",
+  patagonia: "patagonia.com",
+};
+
+export function brandImpersonationCheck(domain: string): FraudCheck {
+  const cleanDomain = domain.replace(/^www\./, "").toLowerCase();
+
+  for (const [brand, officialDomain] of Object.entries(BRAND_DOMAINS)) {
+    // Does the domain contain this brand name?
+    if (!cleanDomain.includes(brand)) continue;
+    // Is it the official domain (or a subdomain of it)?
+    if (cleanDomain === officialDomain || cleanDomain.endsWith(`.${officialDomain}`)) continue;
+
+    return {
+      name: "Brand Impersonation",
+      status: "failed",
+      detail: `"${cleanDomain}" contains "${brand}" but is NOT the official ${officialDomain} — possible brand impersonation`,
+      severity: 0.9,
+    };
+  }
+
+  return {
+    name: "Brand Impersonation",
+    status: "passed",
+    detail: "No brand impersonation detected",
+    severity: 0,
+  };
+}
+
+// ── Check 2b: URL Reachability ──────────────────────────────────────────────
+// Quick HEAD request to verify the URL actually resolves.
+// Catches constructed/fabricated links that return 404 or don't resolve.
+
+export async function urlReachabilityCheck(url: string): Promise<FraudCheck> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch(url, {
+      method: "HEAD",
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    clearTimeout(timeout);
+
+    if (resp.ok || resp.status === 405 || resp.status === 403) {
+      // 405/403 = server exists but blocks HEAD — still reachable
+      return {
+        name: "Link Verification",
+        status: "passed",
+        detail: `URL is reachable (HTTP ${resp.status})`,
+        severity: 0,
+      };
+    }
+
+    if (resp.status === 404) {
+      return {
+        name: "Link Verification",
+        status: "failed",
+        detail: `URL returns 404 Not Found — this product link is invalid`,
+        severity: 0.8,
+      };
+    }
+
+    return {
+      name: "Link Verification",
+      status: "warning",
+      detail: `URL returned HTTP ${resp.status} — may not be a valid product page`,
+      severity: 0.3,
+    };
+  } catch {
+    return {
+      name: "Link Verification",
+      status: "warning",
+      detail: "Could not verify URL — site may be unreachable or blocking requests",
+      severity: 0.25,
+    };
+  }
+}
+
+// ── Check 3: Semantic Domain ──────────────────────────────────────────────────
 // LLM judges whether the domain is a *logical* seller for this product category.
 // Catches cases like "energiacomunitaria.com" selling Sony headphones.
 
@@ -268,20 +373,25 @@ export async function safetyDatabaseCheck(url: string): Promise<FraudCheck> {
 // ── Orchestrator ───────────────────────────────────────────────────────────────
 
 /**
- * Runs all 4 fraud checks for a product in parallel.
+ * Runs all fraud checks for a product in parallel.
  * Pass `referencePrice` = median of all results (use computeMedianPrice).
  */
 export async function validateProduct(
   product: ProductResult,
   referencePrice: number
 ): Promise<FraudCheck[]> {
-  const [price, domain, community, safety] = await Promise.all([
+  // Brand impersonation is deterministic — run first
+  const brandCheck = brandImpersonationCheck(product.domain);
+
+  const [price, domain, community, safety, linkCheck] = await Promise.all([
     Promise.resolve(priceAnomalyCheck(product, referencePrice)),
     semanticDomainCheck(product.domain, product.title),
     communityReputationCheck(product.url),
     safetyDatabaseCheck(product.url),
+    urlReachabilityCheck(product.url),
   ]);
-  return [price, domain, community, safety];
+
+  return [price, brandCheck, domain, community, safety, linkCheck];
 }
 
 // ── Verdict ────────────────────────────────────────────────────────────────────
@@ -305,10 +415,28 @@ const FATAL_FLAGS: Array<{
     score: 0,
   },
   {
+    label: "Brand impersonation — domain mimics a known brand",
+    test: (cs) => cs.some((c) => c.name === "Brand Impersonation" && c.status === "failed"),
+    score: 5,
+  },
+  {
+    label: "Dead link — product URL does not exist",
+    test: (cs) =>
+      cs.some((c) => c.name === "Link Verification" && c.status === "failed"),
+    score: 10,
+  },
+  {
     label: "Extreme price anomaly on implausible domain",
     test: (cs) =>
       cs.some((c) => c.name === "Page Red Flags"       && c.status === "failed") &&
       cs.some((c) => c.name === "Retailer Reputation"  && c.status === "failed"),
+    score: 0,
+  },
+  {
+    label: "Suspiciously low price + dead link",
+    test: (cs) =>
+      cs.some((c) => c.name === "Page Red Flags"       && c.status === "failed") &&
+      cs.some((c) => c.name === "Link Verification"    && c.status === "failed"),
     score: 0,
   },
   {

@@ -16,12 +16,15 @@ interface BrightDataShoppingItem {
   url?: string;
   product_link?: string;
   merchant_link?: string;
+  shopping_url?: string;
   rating?: number;
   reviews_cnt?: number;
   shipping?: string;
   tag?: string;          // "$10 OFF" etc.
-  image?: string;        // base64 data URL
+  image?: string;        // thumbnail URL (often Google-proxied)
   image_url?: string;
+  image_base64?: string; // base64-encoded thumbnail from Bright Data
+  thumbnail?: string;    // some SERP formats use this
   rank?: number;
 }
 
@@ -57,6 +60,45 @@ const RETAILER_DOMAINS: Record<string, string> = {
   "nike": "nike.com",
   "nike.com": "nike.com",
   "adidas": "adidas.com",
+  "adidas.com": "adidas.com",
+  // Fashion / Apparel
+  "h&m": "hm.com",
+  "hm": "hm.com",
+  "hm.com": "hm.com",
+  "zara": "zara.com",
+  "uniqlo": "uniqlo.com",
+  "asos": "asos.com",
+  "gap": "gap.com",
+  "old navy": "oldnavy.com",
+  "under armour": "underarmour.com",
+  "new balance": "newbalance.com",
+  "puma": "puma.com",
+  "lululemon": "lululemon.com",
+  "patagonia": "patagonia.com",
+  "j.crew": "jcrew.com",
+  "j crew": "jcrew.com",
+  "forever 21": "forever21.com",
+  "shein": "shein.com",
+  // Sporting goods
+  "dick's sporting goods": "dickssportinggoods.com",
+  "dick's": "dickssportinggoods.com",
+  "dicks sporting goods": "dickssportinggoods.com",
+  "rei": "rei.com",
+  "academy sports": "academy.com",
+  // Department stores
+  "kohl's": "kohls.com",
+  "kohls": "kohls.com",
+  "jcpenney": "jcpenney.com",
+  "sephora": "sephora.com",
+  "ulta": "ulta.com",
+  "sam's club": "samsclub.com",
+  // Electronics
+  "sony": "sony.com",
+  "dell": "dell.com",
+  "hp": "hp.com",
+  "lenovo": "lenovo.com",
+  "bose": "bose.com",
+  "gamestop": "gamestop.com",
 };
 
 function shopToDomain(shop: string): string {
@@ -75,19 +117,37 @@ function shopToDomain(shop: string): string {
 function shopToUrl(shop: string, productTitle: string): string {
   const domain = shopToDomain(shop);
 
-  // For known retailers, construct search URLs
+  // For known retailers, construct search URLs that land on the product
   const title = encodeURIComponent(productTitle);
-  if (domain === "amazon.com") return `https://www.amazon.com/s?k=${title}`;
-  if (domain === "walmart.com") return `https://www.walmart.com/search?q=${title}`;
-  if (domain === "bestbuy.com") return `https://www.bestbuy.com/site/searchpage.jsp?st=${title}`;
-  if (domain === "target.com") return `https://www.target.com/s?searchTerm=${title}`;
-  if (domain === "ebay.com") return `https://www.ebay.com/sch/i.html?_nkw=${title}`;
-  if (domain === "costco.com") return `https://www.costco.com/CatalogSearch?keyword=${title}`;
-  if (domain === "newegg.com") return `https://www.newegg.com/p/pl?d=${title}`;
+  const SEARCH_URLS: Record<string, string> = {
+    "amazon.com": `https://www.amazon.com/s?k=${title}`,
+    "walmart.com": `https://www.walmart.com/search?q=${title}`,
+    "bestbuy.com": `https://www.bestbuy.com/site/searchpage.jsp?st=${title}`,
+    "target.com": `https://www.target.com/s?searchTerm=${title}`,
+    "ebay.com": `https://www.ebay.com/sch/i.html?_nkw=${title}`,
+    "costco.com": `https://www.costco.com/CatalogSearch?keyword=${title}`,
+    "newegg.com": `https://www.newegg.com/p/pl?d=${title}`,
+    "nike.com": `https://www.nike.com/w?q=${title}`,
+    "adidas.com": `https://www.adidas.com/us/search?q=${title}`,
+    "hm.com": `https://www2.hm.com/en_us/search-results.html?q=${title}`,
+    "dickssportinggoods.com": `https://www.dickssportinggoods.com/search/${title}`,
+    "rei.com": `https://www.rei.com/search?q=${title}`,
+    "kohls.com": `https://www.kohls.com/search.jsp?search=${title}`,
+    "nordstrom.com": `https://www.nordstrom.com/sr?keyword=${title}`,
+    "macys.com": `https://www.macys.com/shop/featured/${title}`,
+    "sephora.com": `https://www.sephora.com/search?keyword=${title}`,
+    "bhphotovideo.com": `https://www.bhphotovideo.com/c/search?q=${title}`,
+    "homedepot.com": `https://www.homedepot.com/s/${title}`,
+    "lowes.com": `https://www.lowes.com/search?searchTerm=${title}`,
+    "wayfair.com": `https://www.wayfair.com/keyword.php?keyword=${title}`,
+    "etsy.com": `https://www.etsy.com/search?q=${title}`,
+    "gamestop.com": `https://www.gamestop.com/search/?q=${title}`,
+  };
 
-  // For unknown retailers, use the domain root so fraud checks hit the real site
-  // (Google Shopping wrapper URL breaks Safe Browsing / Reddit / seller-check)
-  return `https://${domain}`;
+  if (SEARCH_URLS[domain]) return SEARCH_URLS[domain];
+
+  // For unknown retailers, construct a search-style URL if possible
+  return `https://www.${domain}/search?q=${title}`;
 }
 
 /**
@@ -193,7 +253,7 @@ async function searchGoogleShopping(
         const price = parsePrice(item.price!);
         const domain = shopToDomain(item.shop!);
         // Use real product URL from SERP if available; fall back to domain root
-        const rawUrl = item.link || item.url || item.product_link || item.merchant_link;
+        const rawUrl = item.link || item.url || item.product_link || item.merchant_link || item.shopping_url;
         const url = rawUrl || shopToUrl(item.shop!, item.title!);
 
         return {
@@ -204,7 +264,10 @@ async function searchGoogleShopping(
           retailer: item.shop!,
           domain,
           url,
-          imageUrl: item.image_url || undefined,
+          imageUrl: item.image_url || item.image || item.thumbnail
+            || (item.image_base64
+              ? (item.image_base64.startsWith("data:") ? item.image_base64 : `data:image/jpeg;base64,${item.image_base64}`)
+              : undefined),
           rating: item.rating,
           reviewCount: item.reviews_cnt,
           snippet: [item.shipping, item.tag].filter(Boolean).join(" | ") || undefined,
@@ -248,6 +311,7 @@ Return a JSON array of products:
   "price": 249.99,
   "retailer": "Amazon",
   "url": "https://www.amazon.com/dp/...",
+  "imageUrl": "https://... direct product image URL",
   "rating": 4.5,
   "reviewCount": 1234,
   "snippet": "Brief description"
@@ -298,6 +362,7 @@ Rules:
           retailer: (p.retailer as string) || domain,
           domain,
           url: p.url as string,
+          imageUrl: (p.imageUrl as string) || (p.image as string) || (p.thumbnail as string) || undefined,
           rating: p.rating as number | undefined,
           reviewCount: p.reviewCount as number | undefined,
           snippet: p.snippet as string | undefined,

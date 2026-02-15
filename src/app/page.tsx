@@ -688,8 +688,18 @@ function HeroSearch() {
   const router = useRouter();
 
   function handleInvestigate() {
-    const target = url.trim() || "https://www.amazon.com/dp/B0DEMO12345";
-    router.push(`/board_test?url=${encodeURIComponent(target)}`);
+    const input = url.trim();
+    if (!input) return;
+
+    // If it looks like a URL, go straight to board investigation
+    const isUrl = /^https?:\/\//i.test(input) || /^www\./i.test(input) || /\.[a-z]{2,}\//.test(input);
+    if (isUrl) {
+      const fullUrl = input.startsWith("http") ? input : `https://${input}`;
+      window.location.href = `/board_test?url=${encodeURIComponent(fullUrl)}`;
+    } else {
+      // Text query → clarify flow first
+      router.push(`/column_design/clarify?q=${encodeURIComponent(input)}`);
+    }
   }
 
   return (
