@@ -217,7 +217,7 @@ export async function filterReachableProducts(
  */
 export async function searchProducts(
   queries: string[],
-  maxResults: number = 12,
+  maxResults: number = 18,
 ): Promise<ProductResult[]> {
   // Try Bright Data SERP first
   const apiKey = process.env.BRIGHT_DATA_API_KEY;
