@@ -132,7 +132,9 @@ export function ClarifyingQuestions({
   // Completion popup done → fire onComplete
   const handleCompletionDone = useCallback(() => {
     setPhase("done");
-    const refinedQuery = `${productName} ${answers.map((a) => a.value).join(" ")}`;
+    // Build a natural search query: meaningful answer values + product name
+    const meaningful = answers.map((a) => a.value).filter((v) => v && v.trim() !== "");
+    const refinedQuery = [...meaningful, productName].join(" ");
     onComplete(refinedQuery, answers);
   }, [productName, answers, onComplete]);
 

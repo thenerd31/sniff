@@ -207,45 +207,45 @@ export function TwoColumnLayout({
         </div>
       </div>
 
-      {/* Eliminate CTA — pixel button */}
-      {flagged.length > 0 && (
-        <motion.div
-          className="flex flex-col items-center gap-3 py-4"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: maxCol * 0.1 + 0.3, duration: 0.5 }}
+      {/* Action CTA — pixel button */}
+      <motion.div
+        className="flex flex-col items-center gap-3 py-4"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: maxCol * 0.1 + 0.3, duration: 0.5 }}
+      >
+        <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#D4C4A0" }}>
+          {flagged.length > 0
+            ? `Destroy ${flagged.length} cursed item${flagged.length !== 1 ? "s" : ""}?`
+            : "All items verified safe!"}
+        </p>
+        <button
+          onClick={onEliminateFlagged}
+          className="pixel-btn flex items-center gap-2 px-8 py-3 cursor-pointer"
+          style={{
+            border: "4px solid #1A1A1A",
+            background: "#FF6B00",
+            fontFamily: PIXEL_FONT,
+            fontSize: 8,
+            color: "#FFF8E8",
+            boxShadow: "4px 4px 0 #1A1A1A",
+          }}
         >
-          <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#D4C4A0" }}>
-            Destroy {flagged.length} cursed items?
-          </p>
-          <button
-            onClick={onEliminateFlagged}
-            className="pixel-btn flex items-center gap-2 px-8 py-3 cursor-pointer"
-            style={{
-              border: "4px solid #1A1A1A",
-              background: "#FF6B00",
-              fontFamily: PIXEL_FONT,
-              fontSize: 8,
-              color: "#FFF8E8",
-              boxShadow: "4px 4px 0 #1A1A1A",
-            }}
-          >
-            {/* Pixel sword icon */}
-            <svg width="14" height="14" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
-              <rect x="6" y="0" width="1" height="1" fill="#C0C0C0" />
-              <rect x="5" y="1" width="1" height="1" fill="#C0C0C0" />
-              <rect x="4" y="2" width="1" height="1" fill="#C0C0C0" />
-              <rect x="3" y="3" width="1" height="1" fill="#C0C0C0" />
-              <rect x="2" y="4" width="1" height="1" fill="#8B6914" />
-              <rect x="1" y="5" width="1" height="1" fill="#8B6914" />
-              <rect x="0" y="6" width="1" height="1" fill="#8B6914" />
-              <rect x="1" y="4" width="1" height="1" fill="#8B6914" />
-              <rect x="3" y="4" width="1" height="1" fill="#8B6914" />
-            </svg>
-            PURGE CURSED
-          </button>
-        </motion.div>
-      )}
+          {/* Pixel sword icon */}
+          <svg width="14" height="14" viewBox="0 0 8 8" style={{ imageRendering: "pixelated" }}>
+            <rect x="6" y="0" width="1" height="1" fill="#C0C0C0" />
+            <rect x="5" y="1" width="1" height="1" fill="#C0C0C0" />
+            <rect x="4" y="2" width="1" height="1" fill="#C0C0C0" />
+            <rect x="3" y="3" width="1" height="1" fill="#C0C0C0" />
+            <rect x="2" y="4" width="1" height="1" fill="#8B6914" />
+            <rect x="1" y="5" width="1" height="1" fill="#8B6914" />
+            <rect x="0" y="6" width="1" height="1" fill="#8B6914" />
+            <rect x="1" y="4" width="1" height="1" fill="#8B6914" />
+            <rect x="3" y="4" width="1" height="1" fill="#8B6914" />
+          </svg>
+          {flagged.length > 0 ? "PURGE CURSED" : "SORT LOOT"}
+        </button>
+      </motion.div>
     </div>
   );
 }
