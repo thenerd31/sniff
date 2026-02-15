@@ -22,12 +22,12 @@
 
 Online shopping is a trust decision made in seconds with almost no usable information.
 
-- **$12.5B** lost to online fraud in 2024 — up 25% year-over-year (FTC)
+- **$12.5B** lost to online fraud in 2024 - up 25% year-over-year (FTC)
 - **859,000** complaints with $16B in losses (Internet Crime Complaint Center)
 - **1 in 5** US adults have lost money to an online scam
 - **75%** of victims never report it
 
-Scam sites don't look like scams anymore. They have polished storefronts, real-looking checkout flows, and fake social proof indistinguishable from the real thing. "Safe shopping" today requires cross-referencing domain age, SSL validity, safety databases, community sentiment, and seller verification — work nobody has time to do while a countdown timer pressures them to buy.
+Scam sites don't look like scams anymore. They have polished storefronts, real-looking checkout flows, and fake social proof indistinguishable from the real thing. "Safe shopping" today requires cross-referencing domain age, SSL validity, safety databases, community sentiment, and seller verification - work nobody has time to do while a countdown timer pressures them to buy.
 
 **Sniff closes that gap.** Safety becomes an automatic layer of commerce, not a burden.
 
@@ -38,7 +38,7 @@ Scam sites don't look like scams anymore. They have polished storefronts, real-l
 Tell Sniff what you want. It goes to work.
 
 ### Guided Discovery
-Sniff starts a conversation, not a search. It asks the right clarifying questions — gender, style, budget, brand — to understand exactly what you need before searching. Each answer feeds back into the agent's understanding.
+Sniff starts a conversation, not a search. It asks the right clarifying questions - gender, style, budget, brand - to understand exactly what you need before searching. Each answer feeds back into the agent's understanding.
 
 ### Multi-Retailer Search
 Searches across Google Shopping, pulling real listings from Amazon, Best Buy, Walmart, Nordstrom, and dozens more. Dead links get filtered before you ever see them.
@@ -54,10 +54,10 @@ Searches across Google Shopping, pulling real listings from Amazon, Best Buy, Wa
 | **Page Red Flags** | Urgency tactics, missing policies, suspicious payment methods |
 
 ### Real-Time Streaming
-Products appear, fraud checks fill in, verdicts land — all live via Server-Sent Events. You watch the investigation happen, not a loading spinner.
+Products appear, fraud checks fill in, verdicts land - all live via Server-Sent Events. You watch the investigation happen, not a loading spinner.
 
 ### Trust Verdict
-Every listing gets a verdict (**trusted** / **caution** / **danger**) and a trust score (0–100). Sniff recommends the **best pick** — the cheapest option among the safest options.
+Every listing gets a verdict (**trusted** / **caution** / **danger**) and a trust score (0-100). Sniff recommends the **best pick** - the cheapest option among the safest options.
 
 ### Purge & Sort
 Tap **PURGE CURSED** and flagged listings spiral into a black hole. Safe results shuffle into price order. The best deal gets crowned.
@@ -108,15 +108,15 @@ All steps stream to the frontend as they happen via SSE.
 
 ## The Agent Loop
 
-Sniff isn't a single API call — it's a **multi-turn agent** that accumulates context and adapts across steps.
+Sniff isn't a single API call - it's a **multi-turn agent** that accumulates context and adapts across steps.
 
-**Turn 1 — Understand intent:** The query refiner decides if the request is specific enough to search, or asks the highest-information-gain clarifying question. It tracks which dimensions it's covered (budget, brand, style) and picks the most useful unanswered one.
+**Turn 1 - Understand intent:** The query refiner decides if the request is specific enough to search, or asks the highest-information-gain clarifying question. It tracks which dimensions it's covered (budget, brand, style) and picks the most useful unanswered one.
 
-**Turn 2 — Search & validate:** Searches across retailers, validates every URL for reachability, streams results. Holds all products in working memory while fraud checks run in parallel.
+**Turn 2 - Search & validate:** Searches across retailers, validates every URL for reachability, streams results. Holds all products in working memory while fraud checks run in parallel.
 
-**Turn 3 — Investigate & score:** Orchestrates 5 independent tools concurrently per listing, computes weighted trust verdicts. Price anomaly detection compares each listing against the trusted-retailer median — a $49 pair of headphones only gets flagged if trusted retailers sell it for $250+.
+**Turn 3 - Investigate & score:** Orchestrates 5 independent tools concurrently per listing, computes weighted trust verdicts. Price anomaly detection compares each listing against the trusted-retailer median - a $49 pair of headphones only gets flagged if trusted retailers sell it for $250+.
 
-**Turn 4 — Recommend:** Synthesizes trust scores, prices, and fraud signals to recommend the best deal. The entire chain streams live.
+**Turn 4 - Recommend:** Synthesizes trust scores, prices, and fraud signals to recommend the best deal. The entire chain streams live.
 
 ---
 
@@ -143,11 +143,11 @@ Sniff isn't a single API call — it's a **multi-turn agent** that accumulates c
 src/
 ├── app/
 │   └── api/
-│       ├── shop/           POST — SSE stream: product search + fraud checks
-│       │   └── refine/     POST — JSON: guided discovery query refinement
-│       ├── investigate/    POST — SSE stream: full URL investigation
-│       ├── compare/        POST — SSE stream: agentic price comparison
-│       └── deepen/         POST — SSE stream: drill deeper on a finding
+│       ├── shop/           POST - SSE stream: product search + fraud checks
+│       │   └── refine/     POST - JSON: guided discovery query refinement
+│       ├── investigate/    POST - SSE stream: full URL investigation
+│       ├── compare/        POST - SSE stream: agentic price comparison
+│       └── deepen/         POST - SSE stream: drill deeper on a finding
 ├── lib/
 │   ├── shopping-agent.ts          Multi-step shopping pipeline orchestrator
 │   ├── agent.ts                   OpenAI Responses API agent loop
@@ -218,10 +218,10 @@ npm run test:api refine "I want a jacket"
 
 ## What's Next
 
-- **Chrome extension** — investigate any link in-browser before you buy
-- **Image search** — snap a photo, Sniff finds it and validates sellers
-- **Deeper seller verification** — Stagehand-powered crawling of seller profiles, business registration, physical address verification
-- **Price tracking** — monitor prices over time, alert when trusted deals drop
+- **Chrome extension** - investigate any link in-browser before you buy
+- **Image search** - snap a photo, Sniff finds it and validates sellers
+- **Deeper seller verification** - Stagehand-powered crawling of seller profiles, business registration, physical address verification
+- **Price tracking** - monitor prices over time, alert when trusted deals drop
 
 ---
 
