@@ -1,6 +1,6 @@
 /* ── Dashboard — Saved Items ──────────────────────────────────────────── */
 
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+/* Font already loaded in globals.css */
 
 /* ── Design Tokens ──────────────────────────────────────────────────── */
 
@@ -167,16 +167,12 @@
 
 @keyframes dashboard-report-expand {
   0% {
-    max-height: 0;
     opacity: 0;
-    padding-top: 0;
-    padding-bottom: 0;
+    transform: translateY(-10px);
   }
   100% {
-    max-height: 800px;
     opacity: 1;
-    padding-top: 24px;
-    padding-bottom: 24px;
+    transform: translateY(0);
   }
 }
 
@@ -259,14 +255,4 @@
   }
 }
 
-/* ── Pixel Blink (reused) ───────────────────────────────────────────── */
-
-@keyframes pixel-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
-}
+/* pixel-blink keyframe defined in globals.css */

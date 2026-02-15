@@ -6,6 +6,7 @@ import {
   useSavedProductsList,
   useDashboardStats,
 } from "@/stores/savedDashboardStore";
+import { useResultsStore } from "@/stores/resultsStore";
 import { DashboardHeader } from "./DashboardHeader";
 import { SavedItemCard } from "./SavedItemCard";
 import { EmptyDashboard } from "./EmptyDashboard";
@@ -31,6 +32,17 @@ export function SavedDashboard() {
       // If the removed card was expanded, close it
       if (expandedId === id) setExpandedId(null);
       removeProduct(id);
+
+      // Also unsave from resultsStore so bookmark state stays in sync
+      // (directly set savedItems to avoid circular calls via toggleSave)
+      const { savedItems } = useResultsStore.getState();
+      if (savedItems.includes(id)) {
+        const next = savedItems.filter((s) => s !== id);
+        useResultsStore.setState({ savedItems: next });
+        try {
+          localStorage.setItem("sentinel-saved-items", JSON.stringify(next));
+        } catch {}
+      }
     },
     [expandedId, removeProduct]
   );

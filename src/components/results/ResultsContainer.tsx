@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   useResultsStore,
@@ -34,9 +35,11 @@ export function ResultsContainer() {
   const handleShuffleComplete = useCallback(() => {
     setPhase("final-list");
   }, [setPhase]);
-  const handleContinue = useCallback(() => {                                                                                        
-    setPhase("done");                                                                                                                 
-  }, [setPhase]);                                                                                                                   
+  const router = useRouter();
+  const handleContinue = useCallback(() => {
+    setPhase("done");
+    router.push("/column_design/dashboard");
+  }, [setPhase, router]);                                                                                                                   
 
   if (phase === "hidden") return null;
 

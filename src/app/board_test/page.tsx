@@ -27,6 +27,7 @@ import {
 import type { EvidenceCard, CardSeverity, CardType, ProductResult, FraudCheck, ProductVerdict } from "@/types";
 import { useResultsStore } from "@/stores/resultsStore";
 import { ResultsContainer } from "@/components/results/ResultsContainer";
+import { PixelDogMascot } from "@/components/clarify/PixelDogMascot";
 import "@/styles/results.css";
 
 /* ═══════════════════════════════════════════════════════════════
@@ -319,95 +320,6 @@ interface CloudData {
 /* ═══════════════════════════════════════════════════════════════
    PIXEL ART DOG SPRITES (inline SVG — 32x24 pixel art)
    ═══════════════════════════════════════════════════════════════ */
-
-function PixelDog({ style, className }: { style?: React.CSSProperties; className?: string }) {
-  return (
-    <svg
-      width="64"
-      height="48"
-      viewBox="0 0 32 24"
-      className={className}
-      style={{ imageRendering: "pixelated", ...style }}
-    >
-      {/* Body */}
-      <rect x="8" y="10" width="14" height="8" fill="#D4A574" />
-      <rect x="7" y="11" width="1" height="6" fill="#C49464" />
-      <rect x="22" y="11" width="1" height="5" fill="#C49464" />
-      {/* Head */}
-      <rect x="20" y="5" width="8" height="7" fill="#D4A574" />
-      <rect x="19" y="6" width="1" height="5" fill="#C49464" />
-      <rect x="28" y="6" width="1" height="4" fill="#C49464" />
-      {/* Ears */}
-      <rect x="21" y="3" width="3" height="3" fill="#8B6914" />
-      <rect x="25" y="3" width="3" height="3" fill="#8B6914" />
-      {/* Eyes */}
-      <rect x="24" y="7" width="2" height="2" fill="#1A1A1A" />
-      <rect x="25" y="7" width="1" height="1" fill="#FFFFFF" />
-      {/* Nose */}
-      <rect x="27" y="9" width="2" height="2" fill="#1A1A1A" />
-      {/* Tail */}
-      <rect x="5" y="8" width="3" height="2" fill="#8B6914" />
-      <rect x="4" y="6" width="2" height="3" fill="#8B6914" />
-      {/* Front legs */}
-      <rect x="18" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="18" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Back legs */}
-      <rect x="9" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="9" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Belly spot */}
-      <rect x="12" y="14" width="4" height="3" fill="#E8C49C" />
-      {/* Collar */}
-      <rect x="19" y="11" width="4" height="2" fill="#FF0000" />
-      <rect x="20" y="12" width="1" height="1" fill="#FFD700" />
-    </svg>
-  );
-}
-
-function PixelDogIdle({ style, className }: { style?: React.CSSProperties; className?: string }) {
-  return (
-    <svg
-      width="64"
-      height="48"
-      viewBox="0 0 32 24"
-      className={className}
-      style={{ imageRendering: "pixelated", ...style }}
-    >
-      {/* Body */}
-      <rect x="8" y="10" width="14" height="8" fill="#D4A574" />
-      <rect x="7" y="11" width="1" height="6" fill="#C49464" />
-      <rect x="22" y="11" width="1" height="5" fill="#C49464" />
-      {/* Head — tilted down for sniffing */}
-      <rect x="20" y="7" width="8" height="7" fill="#D4A574" />
-      <rect x="19" y="8" width="1" height="5" fill="#C49464" />
-      <rect x="28" y="8" width="1" height="4" fill="#C49464" />
-      {/* Ear */}
-      <rect x="21" y="5" width="3" height="3" fill="#8B6914" />
-      <rect x="25" y="5" width="3" height="3" fill="#8B6914" />
-      {/* Eye — squinting */}
-      <rect x="24" y="9" width="2" height="1" fill="#1A1A1A" />
-      {/* Nose */}
-      <rect x="27" y="12" width="2" height="2" fill="#1A1A1A" />
-      {/* Sniff lines */}
-      <rect x="29" y="11" width="1" height="1" fill="#8B691480" />
-      <rect x="30" y="10" width="1" height="1" fill="#8B691440" />
-      {/* Tail — up/wagging */}
-      <rect x="5" y="6" width="3" height="2" fill="#8B6914" />
-      <rect x="4" y="4" width="2" height="3" fill="#8B6914" />
-      <rect x="3" y="3" width="2" height="2" fill="#8B6914" />
-      {/* Front legs */}
-      <rect x="18" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="18" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Back legs */}
-      <rect x="9" y="18" width="3" height="5" fill="#C49464" />
-      <rect x="9" y="23" width="3" height="1" fill="#8B6914" />
-      {/* Belly spot */}
-      <rect x="12" y="14" width="4" height="3" fill="#E8C49C" />
-      {/* Collar */}
-      <rect x="19" y="13" width="4" height="2" fill="#FF0000" />
-      <rect x="20" y="14" width="1" height="1" fill="#FFD700" />
-    </svg>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    SEGMENTED PIXEL BAR (HP / Power bar)
@@ -1520,11 +1432,11 @@ export default function BoardPage() {
                 >
                   {dogMoving ? (
                     <div style={{ animation: "dog-run 0.4s steps(1) infinite" }}>
-                      <PixelDog />
+                      <PixelDogMascot state="sniffing" />
                     </div>
                   ) : (
                     <div style={{ animation: "dog-bob 1.2s ease-in-out infinite" }}>
-                      <PixelDogIdle />
+                      <PixelDogMascot state="asking" />
                     </div>
                   )}
                 </div>
