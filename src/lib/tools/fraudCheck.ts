@@ -193,33 +193,39 @@ export async function runFraudChecks(
     }
   }
 
-  // Weights: checks, rebalanced so junk signals don't dominate
+  // Weights: rebalanced so noisy signals don't dominate
   const weights: Record<FraudCheckName, number> = {
-    "Retailer Reputation": 0.30,  // WHOIS + price anomaly
-    "Safety Database": 0.05,      // binary, rarely fails
-    "Community Sentiment": 0.30,  // Reddit presence is a strong signal
-    "Brand Impersonation": 0.15,  // catches typosquatting
-    "Page Red Flags": 0.20,       // urgency, missing policies, suspicious payments
-    "Seller Verification": 0.20,  // seller page analysis
-    "Link Verification": 0.15,   // dead links = bad data
+    "Retailer Reputation": 0.25,  // WHOIS + price anomaly
+    "Safety Database": 0.15,      // binary but critical when it fires
+    "Community Sentiment": 0.15,  // Reddit presence — low weight, many legit sites absent
+    "Brand Impersonation": 0.20,  // catches typosquatting
+    "Page Red Flags": 0.25,       // urgency, missing policies, suspicious payments
+    "Seller Verification": 0.15,  // seller page analysis
+    "Link Verification": 0.10,   // dead links = bad data
   };
 
   let weightedScore = 0;
+  let totalWeight = 0;
   for (const [name, check] of checksByName) {
-    weightedScore += (1 - check.severity) * (weights[name] || 0.20);
+    const w = weights[name] || 0.15;
+    weightedScore += (1 - check.severity) * w;
+    totalWeight += w;
   }
-  const trustScore = Math.round(weightedScore * 100);
+  // Normalize so score is always 0-100 regardless of how many checks ran
+  const trustScore = totalWeight > 0 ? Math.round((weightedScore / totalWeight) * 100) : 50;
 
-  const failedCount = [...checksByName.values()].filter((c) => c.status === "failed").length;
+  const failedChecks = [...checksByName.values()].filter((c) => c.status === "failed");
+  const failedCount = failedChecks.length;
 
   let verdict: ProductVerdict;
-  if (failedCount >= 1 && [...checksByName.values()].some((c) => c.severity >= 0.8)) {
+  // Only "danger" if there are multiple hard failures OR a truly critical signal (safety DB)
+  if (failedChecks.some((c) => c.name === "Safety Database" && c.severity >= 0.8)) {
     verdict = "danger";
-  } else if (failedCount >= 2) {
+  } else if (failedCount >= 2 && failedChecks.some((c) => c.severity >= 0.7)) {
     verdict = "danger";
-  } else if (trustScore >= 75) {
+  } else if (trustScore >= 70) {
     verdict = "trusted";
-  } else if (trustScore >= 45) {
+  } else if (trustScore >= 40) {
     verdict = "caution";
   } else {
     verdict = "danger";
@@ -268,14 +274,14 @@ async function checkRetailerReputation(product: ProductResult): Promise<FraudChe
       name: "Retailer Reputation",
       status: "passed",
       detail: `${product.domain}: ${whoisCard.title} — ${whoisCard.detail}`,
-      severity: 0.1,
+      severity: 0,
     };
   } catch {
     return {
       name: "Retailer Reputation",
       status: "warning",
       detail: `Could not verify domain registration for ${product.domain}`,
-      severity: 0.4,
+      severity: 0.2,
     };
   }
 }
@@ -342,7 +348,7 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
         name: "Community Sentiment",
         status: "warning",
         detail: `No Reddit mentions found for ${product.domain} — limited online presence`,
-        severity: 0.45,
+        severity: 0.15, // Low severity: many legit retailers have no Reddit presence
       };
     }
 
@@ -350,7 +356,7 @@ async function checkCommunitySentiment(product: ProductResult): Promise<FraudChe
       name: "Community Sentiment",
       status: "passed",
       detail: redditCard.title + " — " + redditCard.detail,
-      severity: 0.1,
+      severity: 0,
     };
   } catch {
     return {
