@@ -187,12 +187,14 @@ async function isUrlReachable(url: string): Promise<boolean> {
 export async function filterReachableProducts(
   products: ProductResult[],
 ): Promise<ProductResult[]> {
-  const { isHighAuthorityDomain } = await import("@/lib/known-domains");
+  const { isHighAuthorityDomain, isKnownDangerousDomain } = await import("@/lib/known-domains");
 
   const checks = await Promise.allSettled(
     products.map(async (product) => {
       // Trusted domains — skip HEAD check
       if (isHighAuthorityDomain(product.domain)) return true;
+      // Known dangerous domains — keep them so fraud checks can flag them
+      if (isKnownDangerousDomain(product.domain)) return true;
       return isUrlReachable(product.url);
     })
   );
