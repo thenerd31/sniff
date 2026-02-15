@@ -194,7 +194,7 @@ function GrandMountainRange() {
 /* Pixel sun with glow */
 function PixelSun() {
   return (
-    <div className="absolute right-[6%] top-[12%]">
+    <div className="absolute right-[6%] top-[14%]">
       {/* Glow halo */}
       <div
         className="absolute -inset-6 rounded-full"
@@ -697,7 +697,7 @@ function HeroSearch() {
       {/* Search bar with sparkles */}
       <div className="relative w-full">
         {/* Sparkles around search */}
-        <div className="absolute -left-10 -top-5">
+        <div className="absolute -bottom-5 -left-8">
           <PixelSparkle delay={0} />
         </div>
         <div className="absolute -right-8 top-0">
@@ -706,7 +706,7 @@ function HeroSearch() {
         <div className="absolute -bottom-4 -right-10">
           <PixelCoin delay={0.3} />
         </div>
-        <div className="absolute -bottom-5 -left-8">
+        <div className="absolute -left-10 -top-5">
           <PixelCoin delay={1.2} />
         </div>
 

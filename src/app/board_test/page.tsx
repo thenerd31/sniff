@@ -20,7 +20,6 @@ import {
   ChevronRight,
   ShoppingBag,
   Sparkles,
-  Sword,
   Shield,
   Skull,
   Heart,
@@ -903,55 +902,6 @@ function QuestLog({ logs }: { logs: LogEntry[] }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DIG DEEPER — pixel buttons
-   ═══════════════════════════════════════════════════════════════ */
-
-const DIG_ACTIONS = [
-  { label: "Reviews", icon: Star, focus: "reviews" },
-  { label: "Seller", icon: User, focus: "seller" },
-  { label: "Prices", icon: ShoppingCart, focus: "price_history" },
-  { label: "Alts", icon: TrendingUp, focus: "alternatives" },
-  { label: "Biz", icon: Building, focus: "business" },
-] as const;
-
-function DigDeeperPanel({
-  disabled,
-  onAction,
-}: {
-  disabled: boolean;
-  onAction: (focus: string) => void;
-}) {
-  return (
-    <PixelFrame className="shrink-0 p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <Sword className="h-4 w-4" style={{ color: "#8B6914" }} />
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A" }}>ABILITIES</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {DIG_ACTIONS.map((a) => (
-          <button
-            key={a.focus}
-            onClick={() => onAction(a.focus)}
-            disabled={disabled}
-            className="pixel-btn flex items-center gap-2 px-3 py-2 text-left"
-            style={{
-              border: "3px solid #1A1A1A",
-              background: disabled ? "#D4C4A0" : "#FFF8E8",
-              fontFamily: PIXEL_FONT,
-              fontSize: 6,
-              color: "#1A1A1A",
-              cursor: disabled ? "not-allowed" : "pointer",
-            }}
-          >
-            <a.icon className="h-3.5 w-3.5 shrink-0" style={{ color: "#8B6914" }} />
-            {a.label}
-          </button>
-        ))}
-      </div>
-    </PixelFrame>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
    DIGGING PLACEHOLDER — shown while agent is still investigating
@@ -1142,6 +1092,7 @@ export default function BoardPage() {
   // Auto-scroll to results when investigation completes
   useEffect(() => {
     if (status === "complete" && resultsRef.current && scrollContainerRef.current) {
+      // Wait for ResultsContainer to mount and animate in before scrolling
       const timer = setTimeout(() => {
         const container = scrollContainerRef.current;
         const target = resultsRef.current;
@@ -1169,7 +1120,7 @@ export default function BoardPage() {
         }
 
         requestAnimationFrame(step);
-      }, 500);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [status]);
@@ -1259,7 +1210,6 @@ export default function BoardPage() {
             break;
           }
           case "done": {
-            setStatus("complete");
             setSummary(evt.data.summary);
             addLog("Quest complete!");
             setClouds((prev) =>
@@ -1269,7 +1219,9 @@ export default function BoardPage() {
                   : c
               )
             );
-            seedResultsStore();
+            // Seed results store first, then mark complete to trigger scroll
+            await seedResultsStore();
+            setStatus("complete");
             break;
           }
         }
@@ -1359,12 +1311,6 @@ export default function BoardPage() {
               }}
             >
               <QuestLog logs={logs} />
-              <DigDeeperPanel
-                disabled={status === "investigating"}
-                onAction={(focus) => {
-                  addLog(`Using ability: ${focus}...`);
-                }}
-              />
             </motion.aside>
           )}
         </AnimatePresence>
