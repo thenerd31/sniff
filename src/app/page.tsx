@@ -194,7 +194,7 @@ function GrandMountainRange() {
 /* Pixel sun with glow */
 function PixelSun() {
   return (
-    <div className="absolute right-[6%] top-[14%]">
+    <div className="absolute right-[6%] top-[12%]">
       {/* Glow halo */}
       <div
         className="absolute -inset-6 rounded-full"
@@ -654,18 +654,18 @@ function SavingsCard({
 }) {
   return (
     <PixelFrame className="flex flex-col gap-3 p-4 transition-transform hover:-translate-y-1">
-      <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A", lineHeight: 1.6 }}>{product}</p>
+      <p style={{ fontFamily: PIXEL_FONT, fontSize: 13, color: "#1A1A1A", lineHeight: 1.6 }}>{product}</p>
       <div className="flex items-center gap-3">
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#8B6914", textDecoration: "line-through" }}>{retailPrice}</span>
-        <ArrowRight className="h-3 w-3" style={{ color: "#FF6B00" }} />
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#00CC00", fontWeight: "bold" }}>{sourcePrice}</span>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 16, color: "#8B6914", textDecoration: "line-through" }}>{retailPrice}</span>
+        <ArrowRight className="h-4 w-4" style={{ color: "#FF6B00" }} />
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 16, color: "#00CC00", fontWeight: "bold" }}>{sourcePrice}</span>
       </div>
       <div className="flex items-center justify-between">
-        <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>{retailer} → Source</span>
+        <span style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#8B6914" }}>{retailer} → Source</span>
         <span
           style={{
             fontFamily: PIXEL_FONT,
-            fontSize: 6,
+            fontSize: 11,
             color: "#006400",
             border: "2px solid #006400",
             background: "#F0FFF0",
@@ -707,7 +707,7 @@ function HeroSearch() {
       {/* Search bar with sparkles */}
       <div className="relative w-full">
         {/* Sparkles around search */}
-        <div className="absolute -bottom-5 -left-8">
+        <div className="absolute -left-10 -top-5">
           <PixelSparkle delay={0} />
         </div>
         <div className="absolute -right-8 top-0">
@@ -716,7 +716,7 @@ function HeroSearch() {
         <div className="absolute -bottom-4 -right-10">
           <PixelCoin delay={0.3} />
         </div>
-        <div className="absolute -left-10 -top-5">
+        <div className="absolute -bottom-5 -left-8">
           <PixelCoin delay={1.2} />
         </div>
 
@@ -797,11 +797,11 @@ function FeatureCard({
         >
           <Icon className="h-4 w-4" style={{ color: iconColor }} />
         </div>
-        <h3 style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#1A1A1A", lineHeight: 1.6 }}>
+        <h3 style={{ fontFamily: PIXEL_FONT, fontSize: 16, color: "#1A1A1A", lineHeight: 1.6 }}>
           {title}
         </h3>
       </div>
-      <p style={{ fontFamily: PIXEL_FONT, fontSize: 6, lineHeight: 2, color: "#4A3A2A" }} className="mb-4">
+      <p style={{ fontFamily: PIXEL_FONT, fontSize: 11, lineHeight: 2, color: "#4A3A2A" }} className="mb-4">
         {description}
       </p>
       <div className="mt-auto">{children}</div>
@@ -918,19 +918,19 @@ export default function Home() {
               style={{ border: "2px solid #8B6914", background: "#FFD700" }}
             >
               <Sparkles className="h-3 w-3" style={{ color: "#8B6914" }} />
-              <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914", letterSpacing: 2 }}>
+              <span style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#8B6914", letterSpacing: 2 }}>
                 ABILITIES &amp; POWERS
               </span>
             </div>
-            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 14, color: "#1A1A1A", lineHeight: 2.2, textShadow: "2px 2px 0 #D4C4A0" }}>
+            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 28, color: "#1A1A1A", lineHeight: 1.6, textShadow: "2px 2px 0 #D4C4A0" }}>
               DISCOVER, COMPARE
             </h2>
-            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 14, color: "#FF6B00", lineHeight: 2.2, textShadow: "2px 2px 0 #1A1A1A" }}>
+            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 28, color: "#FF6B00", lineHeight: 1.6, textShadow: "2px 2px 0 #1A1A1A" }}>
               AND SAVE
             </h2>
             <p
               className="mt-4 max-w-[560px]"
-              style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 2.2, color: "#4A3A2A" }}
+              style={{ fontFamily: PIXEL_FONT, fontSize: 13, lineHeight: 2.2, color: "#4A3A2A" }}
             >
               From price tracking to deal alerts, Sniff is your AI companion for finding deals across the internet.
             </p>
@@ -954,15 +954,15 @@ export default function Home() {
                 </div>
                 <div className="flex gap-3 p-3">
                   <div className="h-14 w-14 shrink-0" style={{ border: "2px dashed #FF6B00", background: "#FFF4EC" }}>
-                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#FF6B00", padding: 2, display: "block" }}>IMG</span>
+                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#FF6B00", padding: 2, display: "block" }}>IMG</span>
                   </div>
                   <div className="flex flex-1 flex-col gap-2 pt-1">
                     <div className="h-2 w-3/4" style={{ background: "#D4C4A0" }} />
                     <div className="h-3 w-1/3" style={{ border: "2px dashed #FF6B00", background: "#FFF4EC" }}>
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 4, color: "#FF6B00", padding: 1, display: "block" }}>PRICE</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#FF6B00", padding: 1, display: "block" }}>PRICE</span>
                     </div>
                     <div className="mt-auto flex items-center justify-center px-2 py-1" style={{ border: "2px solid #FF6B00", background: "#FF6B00" }}>
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#FFF8E8" }}>Best Deal</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#FFF8E8" }}>Best Deal</span>
                     </div>
                   </div>
                 </div>
@@ -988,7 +988,7 @@ export default function Home() {
                       className="px-3 py-1.5"
                       style={{
                         fontFamily: PIXEL_FONT,
-                        fontSize: 6,
+                        fontSize: 11,
                         color: step.label === "SAVE!" ? "#FFF8E8" : step.color,
                         border: `2px solid ${step.color}`,
                         background: step.label === "SAVE!" ? step.color : "#FFF8E8",
@@ -997,7 +997,7 @@ export default function Home() {
                       {step.label}
                     </span>
                     {i < arr.length - 1 && (
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 8, color: "#8B6914" }}>→</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 14, color: "#8B6914" }}>→</span>
                     )}
                   </div>
                 ))}
@@ -1019,8 +1019,8 @@ export default function Home() {
                 ].map((bar) => (
                   <div key={bar.label} className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#8B6914" }}>{bar.label}</span>
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#1A1A1A" }}>{bar.pct}%</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#8B6914" }}>{bar.label}</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#1A1A1A" }}>{bar.pct}%</span>
                     </div>
                     <PixelBar value={bar.pct} color={bar.color} height={8} />
                   </div>
@@ -1046,15 +1046,15 @@ export default function Home() {
                     className="flex flex-col gap-1 p-2"
                     style={{ border: "2px solid #1A1A1A", background: "#FFF8E8" }}
                   >
-                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#8B6914" }}>{v.name}</span>
+                    <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#8B6914" }}>{v.name}</span>
                     <div className="flex items-baseline gap-1">
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 10, color: "#1A1A1A" }}>{v.score}</span>
-                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 5, color: "#8B6914" }}>/100</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 18, color: "#1A1A1A" }}>{v.score}</span>
+                      <span style={{ fontFamily: PIXEL_FONT, fontSize: 9, color: "#8B6914" }}>/100</span>
                       <span
                         className="ml-auto"
                         style={{
                           fontFamily: PIXEL_FONT,
-                          fontSize: 6,
+                          fontSize: 11,
                           color: v.trend.startsWith("+") ? "#00CC00" : "#FF0000",
                         }}
                       >
@@ -1087,17 +1087,17 @@ export default function Home() {
               style={{ border: "2px solid #FFD700", background: "#8B6914" }}
             >
               <Gift className="h-3 w-3" style={{ color: "#FFD700" }} />
-              <span style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#FFD700", letterSpacing: 2 }}>
+              <span style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#FFD700", letterSpacing: 2 }}>
                 LOOT DROPS
               </span>
             </div>
-            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 14, color: "#FFF8E8", lineHeight: 2.2, textShadow: "2px 2px 0 #1A1A1A" }}>
+            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 28, color: "#FFF8E8", lineHeight: 1.6, textShadow: "2px 2px 0 #1A1A1A" }}>
               REAL SAVINGS,
             </h2>
-            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 14, color: "#FFD700", lineHeight: 2.2, textShadow: "2px 2px 0 #1A1A1A" }}>
+            <h2 style={{ fontFamily: PIXEL_FONT, fontSize: 28, color: "#FFD700", lineHeight: 1.6, textShadow: "2px 2px 0 #1A1A1A" }}>
               REAL PRODUCTS
             </h2>
-            <p className="mt-4 max-w-[500px]" style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 2.2, color: "#D4C4A0" }}>
+            <p className="mt-4 max-w-[500px]" style={{ fontFamily: PIXEL_FONT, fontSize: 13, lineHeight: 2.2, color: "#D4C4A0" }}>
               Deals our shoppers have found using Sniff.
             </p>
           </div>
@@ -1128,7 +1128,7 @@ export default function Home() {
           }}
         />
         <div className="relative mx-auto max-w-[800px] text-center">
-          <p className="mb-8" style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#8B6914", letterSpacing: 3 }}>
+          <p className="mb-8" style={{ fontFamily: PIXEL_FONT, fontSize: 13, color: "#8B6914", letterSpacing: 3 }}>
             POWERED BY
           </p>
           <div className="flex flex-wrap items-center justify-center gap-10">
@@ -1139,7 +1139,7 @@ export default function Home() {
                 style={{ border: "3px solid #1A1A1A", background: "#FFF8E8", boxShadow: "3px 3px 0 #1A1A1A" }}
               >
                 <Star className="h-3.5 w-3.5" style={{ color: "#8B6914" }} />
-                <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#1A1A1A" }}>{name}</span>
+                <span style={{ fontFamily: PIXEL_FONT, fontSize: 13, color: "#1A1A1A" }}>{name}</span>
               </div>
             ))}
           </div>
@@ -1162,10 +1162,10 @@ export default function Home() {
         />
         <div className="relative mx-auto max-w-[640px] text-center">
           <PixelFrame className="p-8">
-            <h2 className="mb-6" style={{ fontFamily: PIXEL_FONT, fontSize: 12, color: "#1A1A1A", lineHeight: 2.2, textShadow: "2px 2px 0 #D4C4A0" }}>
+            <h2 className="mb-6" style={{ fontFamily: PIXEL_FONT, fontSize: 24, color: "#1A1A1A", lineHeight: 1.6, textShadow: "2px 2px 0 #D4C4A0" }}>
               BUILT AT TREEHACKS 2026
             </h2>
-            <p style={{ fontFamily: PIXEL_FONT, fontSize: 7, lineHeight: 2.4, color: "#4A3A2A" }}>
+            <p style={{ fontFamily: PIXEL_FONT, fontSize: 13, lineHeight: 2.4, color: "#4A3A2A" }}>
               Sniff started as a question: why do we pay 5-10x markup on everyday products?
               We built an AI shopping assistant that finds the best deals across the entire
               internet — so you always get the best price.
@@ -1191,7 +1191,7 @@ export default function Home() {
             >
               <ShoppingBag className="h-3 w-3" style={{ color: "#1A1A1A" }} />
             </div>
-            <span style={{ fontFamily: PIXEL_FONT, fontSize: 7, color: "#FFF8E8" }}>
+            <span style={{ fontFamily: PIXEL_FONT, fontSize: 13, color: "#FFF8E8" }}>
               Sniff &copy; {new Date().getFullYear()}
             </span>
           </div>
@@ -1200,7 +1200,7 @@ export default function Home() {
               <a
                 key={label}
                 href="#"
-                style={{ fontFamily: PIXEL_FONT, fontSize: 6, color: "#D4C4A0" }}
+                style={{ fontFamily: PIXEL_FONT, fontSize: 11, color: "#D4C4A0" }}
                 className="transition-colors hover:text-[#FFD700]"
               >
                 {label}
