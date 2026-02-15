@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FlipCard } from "./FlipCard";
+import { LootFlipCard } from "./LootFlipCard";
 import { useResultsStore } from "@/stores/resultsStore";
 import type { ProductWithVerdict } from "@/types";
 
@@ -138,11 +138,11 @@ export function TwoColumnLayout({
                 variants={cardVariants}
                 layoutId={`card-${product.id}`}
               >
-                <FlipCard
+                <LootFlipCard
                   product={product}
                   isSaved={savedItems.includes(product.id)}
                   onToggleSave={() => toggleSave(product.id)}
-                  className="h-[420px]"
+                  className="h-[400px]"
                 />
               </motion.div>
             ))}
@@ -190,11 +190,11 @@ export function TwoColumnLayout({
                 variants={cardVariants}
                 layoutId={`card-${product.id}`}
               >
-                <FlipCard
+                <LootFlipCard
                   product={product}
                   isSaved={savedItems.includes(product.id)}
                   onToggleSave={() => toggleSave(product.id)}
-                  className="h-[420px]"
+                  className="h-[640px]"
                 />
               </motion.div>
             ))}
