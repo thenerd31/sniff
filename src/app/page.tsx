@@ -1199,7 +1199,7 @@ export default function Home() {
             {[
               { label: "Privacy", href: "#" },
               { label: "Terms", href: "#" },
-              { label: "GitHub", href: "https://github.com/thenerd31/sentinel-treehacks" },
+              { label: "GitHub", href: "https://github.com/thenerd31/sniff" },
             ].map(({ label, href }) => (
               <a
                 key={label}
